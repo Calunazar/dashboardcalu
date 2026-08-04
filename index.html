@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Logístico · Carrefour</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#12161c;
+  --panel:#1a1f28;
+  --panel2:#212833;
+  --line:#2a323f;
+  --text:#e7ebf0;
+  --text-dim:#8b95a3;
+  --accent:#2fd3c2;
+  --accent-dim:#1b9285;
+  --warn:#f2a341;
+  --bad:#e5636b;
+  --good:#5cc985;
+  --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent);}
+header.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 28px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#151a21,#12161c);
+  position:sticky;top:0;z-index:20;
+}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand-mark{
+  width:34px;height:34px;border-radius:8px;
+  background:conic-gradient(from 220deg,var(--accent),var(--accent-dim));
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;color:#0b1013;font-size:15px;
+}
+.brand h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px;}
+.brand span{display:block;font-size:11.5px;color:var(--text-dim);margin-top:1px;font-family:var(--mono);}
+.top-actions{display:flex;align-items:center;gap:14px;}
+.pill{
+  font-size:11px;color:var(--text-dim);font-family:var(--mono);
+  border:1px solid var(--line);padding:5px 10px;border-radius:20px;
+  display:flex;align-items:center;gap:6px;
+}
+.pill .dot{width:6px;height:6px;border-radius:50%;background:var(--good);}
+.pill.stale .dot{background:var(--warn);}
+.pill.err .dot{background:var(--bad);}
+button.ghost{
+  background:transparent;border:1px solid var(--line);color:var(--text-dim);
+  padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;
+  font-family:inherit;transition:border-color .15s,color .15s;
+}
+button.ghost:hover{border-color:var(--accent-dim);color:var(--text);}
+main{padding:24px 28px 60px;max-width:1400px;margin:0 auto;}
+
+.filters{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:16px;margin-bottom:20px;
+}
+.field{display:flex;flex-direction:column;gap:5px;min-width:170px;flex:1;}
+.field label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;}
+select,input[type=text],input[type=password]{
+  background:var(--panel2);border:1px solid var(--line);color:var(--text);
+  padding:8px 10px;border-radius:7px;font-size:13px;font-family:inherit;
+}
+select:focus,input:focus{outline:2px solid var(--accent-dim);outline-offset:1px;}
+.field.grow{flex:2;}
+.clear-btn{align-self:flex-end;}
+
+.kpi-grid{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px;
+}
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+.kpi{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:16px 16px 14px;position:relative;overflow:hidden;
+}
+.kpi .label{font-size:11.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;}
+.kpi .value{font-family:var(--mono);font-size:28px;font-weight:600;margin-top:6px;}
+.kpi .sub{font-size:11.5px;color:var(--text-dim);margin-top:4px;}
+.kpi.na .value{color:var(--text-dim);font-size:20px;}
+.kpi .bar{height:3px;background:var(--line);border-radius:2px;margin-top:10px;overflow:hidden;}
+.kpi .bar i{display:block;height:100%;background:var(--accent);}
+.kpi.warn .value{color:var(--warn);}
+.kpi.bad .value{color:var(--bad);}
+.kpi.good .value{color:var(--good);}
+
+.grid-2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:22px;}
+@media(max-width:1000px){.grid-2{grid-template-columns:1fr;}}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;
+}
+.card h3{margin:0 0 14px;font-size:13.5px;font-weight:650;}
+.card h3 small{display:block;font-weight:400;color:var(--text-dim);font-size:11px;margin-top:2px;font-family:var(--mono);}
+.chart-wrap{position:relative;height:260px;}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);}
+th{color:var(--text-dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;}
+tbody tr:hover{background:var(--panel2);}
+td.num,th.num{text-align:right;font-family:var(--mono);}
+.table-scroll{max-height:340px;overflow:auto;}
+.tag{
+  display:inline-block;font-size:10.5px;font-family:var(--mono);
+  padding:1px 6px;border-radius:4px;background:var(--panel2);color:var(--text-dim);
+}
+.tag.bad{color:var(--bad);background:rgba(229,99,107,.12);}
+.tag.warn{color:var(--warn);background:rgba(242,163,65,.12);}
+.tag.good{color:var(--good);background:rgba(92,201,133,.12);}
+
+.empty-note{color:var(--text-dim);font-size:12px;padding:20px 0;text-align:center;}
+
+/* admin gear + modal */
+#adminGear{
+  position:fixed;bottom:18px;right:18px;width:38px;height:38px;border-radius:50%;
+  background:var(--panel);border:1px solid var(--line);color:var(--text-dim);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;
+  z-index:40;transition:color .15s,border-color .15s;
+}
+#adminGear:hover{color:var(--accent);border-color:var(--accent-dim);}
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(8,10,13,.7);display:none;
+  align-items:center;justify-content:center;z-index:50;
+}
+.modal-backdrop.show{display:flex;}
+.modal{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  width:min(560px,92vw);max-height:86vh;overflow:auto;padding:22px;
+}
+.modal h2{margin:0 0 4px;font-size:15px;}
+.modal p.hint{color:var(--text-dim);font-size:12px;margin:0 0 16px;}
+.modal .row{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.modal .row label{font-size:11.5px;color:var(--text-dim);}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
+button.primary{
+  background:var(--accent);border:none;color:#0b1013;font-weight:650;
+  padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;
+}
+button.primary:hover{background:#3fe0cf;}
+.admin-panel-body{display:none;}
+.admin-panel-body.show{display:block;}
+.src-row{display:grid;grid-template-columns:130px 1fr;gap:8px;align-items:center;margin-bottom:8px;}
+.src-row label{font-size:11.5px;color:var(--text-dim);}
+.err-text{color:var(--bad);font-size:12px;margin-top:8px;display:none;}
+.err-text.show{display:block;}
+footer{
+  text-align:center;color:var(--text-dim);font-size:11px;padding:20px;font-family:var(--mono);
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">CF</div>
+    <div>
+      <h1>Dashboard Logístico · Carrefour</h1>
+      <span id="lastUpdated">cargando datos…</span>
+    </div>
+  </div>
+  <div class="top-actions">
+    <div class="pill stale" id="statusPill"><span class="dot"></span><span id="statusText">Sin datos</span></div>
+    <button class="ghost" id="refreshBtn">↻ Refrescar</button>
+  </div>
+</header>
+
+<main>
+
+  <div class="filters">
+    <div class="field">
+      <label for="fTienda">Tienda</label>
+      <select id="fTienda"><option value="">Todas</option></select>
+    </div>
+    <div class="field">
+      <label for="fFormato">Formato</label>
+      <select id="fFormato"><option value="">Todos</option></select>
+    </div>
+    <div class="field">
+      <label for="fSupervisor">Supervisor</label>
+      <select id="fSupervisor"><option value="">Todos</option></select>
+    </div>
+    <div class="field">
+      <label for="fFamilia">Familia / Negocio</label>
+      <select id="fFamilia"><option value="">Todas</option></select>
+    </div>
+    <div class="field grow">
+      <label for="fSku">Buscar SKU / EAN / Descripción</label>
+      <input type="text" id="fSku" placeholder="Ej: 62182 o fideos...">
+    </div>
+    <button class="ghost clear-btn" id="clearFilters">Limpiar filtros</button>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi" id="kpiQuiebres">
+      <div class="label">Quiebres</div>
+      <div class="value">—</div>
+      <div class="sub">% combinaciones Tienda×SKU en quiebre</div>
+      <div class="bar"><i style="width:0%"></i></div>
+    </div>
+    <div class="kpi" id="kpiFillRate">
+      <div class="label">Fill Rate (DF)</div>
+      <div class="value">—</div>
+      <div class="sub">Promedio ponderado por formato</div>
+      <div class="bar"><i style="width:0%"></i></div>
+    </div>
+    <div class="kpi" id="kpiDOH">
+      <div class="label">DOH promedio</div>
+      <div class="value">—</div>
+      <div class="sub">Days on hand · nivel nacional por SKU</div>
+      <div class="bar"><i style="width:0%"></i></div>
+    </div>
+    <div class="kpi" id="kpiPedidos">
+      <div class="label">Cumplimiento Pedidos→Entregas</div>
+      <div class="value">—</div>
+      <div class="sub">Cajas entregadas / cajas pedidas</div>
+      <div class="bar"><i style="width:0%"></i></div>
+    </div>
+    <div class="kpi na" id="kpiDevoluciones">
+      <div class="label">Devoluciones</div>
+      <div class="value">Sin fuente</div>
+      <div class="sub">Todavía no hay un archivo de devoluciones conectado</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Quiebres por Cluster / Formato<small>% de combinaciones Tienda×SKU con Quiebres=1, filtro aplicado</small></h3>
+      <div class="chart-wrap"><canvas id="chartQuiebres"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Pedidos vs. Entregas por semana<small>Cajas pedidas vs. cajas entregadas (Umg), últimas semanas disponibles</small></h3>
+      <div class="chart-wrap"><canvas id="chartPedidos"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Top 15 SKUs con más quiebres<small>Sobre el universo filtrado actual</small></h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>EAN</th><th>Descripción</th><th>Familia</th><th class="num">Quiebres</th><th class="num">Tiendas</th><th class="num">% quiebre</th></tr></thead>
+          <tbody id="tblTopQuiebres"><tr><td colspan="6" class="empty-note">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Cumplimiento por Supervisor<small>Cajas pedidas vs. entregadas, últimos datos disponibles</small></h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Supervisor</th><th class="num">Pedido</th><th class="num">Entregado</th><th class="num">%</th></tr></thead>
+          <tbody id="tblSupervisor"><tr><td colspan="4" class="empty-note">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <footer>Fuente: SCRD Carrefour · Gestión de Pedidos · Parámetros — actualización automática desde Google Sheets publicados</footer>
+</main>
+
+<div id="adminGear" title="Modo administrador">⚙</div>
+
+<div class="modal-backdrop" id="adminModal">
+  <div class="modal">
+    <div id="loginBody">
+      <h2>Modo administrador</h2>
+      <p class="hint">Ingresá la contraseña para editar las fuentes de datos. El resto de las visitas nunca ve esta pantalla.</p>
+      <div class="row">
+        <label for="adminPass">Contraseña</label>
+        <input type="password" id="adminPass" autocomplete="off">
+      </div>
+      <p class="err-text" id="loginErr">Contraseña incorrecta.</p>
+      <div class="modal-actions">
+        <button class="ghost" id="cancelLogin">Cancelar</button>
+        <button class="primary" id="submitLogin">Entrar</button>
+      </div>
+    </div>
+    <div id="adminBody" class="admin-panel-body">
+      <h2>Fuentes de datos</h2>
+      <p class="hint">Estos links se guardan solo en este navegador. Si republicás una hoja y cambia el gid, actualizalo acá.</p>
+      <div id="srcRows"></div>
+      <div class="modal-actions">
+        <button class="ghost" id="closeAdmin">Cerrar</button>
+        <button class="primary" id="saveSrc">Guardar y refrescar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==========================================================================
+   CONFIG — links de Google Sheets publicados como CSV.
+   Editables desde el panel de admin (⚙, contraseña) y persistidos en
+   localStorage — no requieren tocar este archivo para actualizarse.
+   ========================================================================== */
+const DEFAULT_SOURCES = {
+  consolidado:      "https://docs.google.com/spreadsheets/d/e/2PACX-1vTiMewjGXRQVZBeQii7RoHVsDv7lGnsfJQU_zt8kJwzdW7EGFZV_caX2PbZiCLtXw/pub?gid=2097803032&single=true&output=csv",
+  maestroProducto:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vTiMewjGXRQVZBeQii7RoHVsDv7lGnsfJQU_zt8kJwzdW7EGFZV_caX2PbZiCLtXw/pub?gid=626216613&single=true&output=csv",
+  base:             "https://docs.google.com/spreadsheets/d/e/2PACX-1vTiMewjGXRQVZBeQii7RoHVsDv7lGnsfJQU_zt8kJwzdW7EGFZV_caX2PbZiCLtXw/pub?gid=1028284235&single=true&output=csv",
+  ventaMedia:       "https://docs.google.com/spreadsheets/d/e/2PACX-1vTiMewjGXRQVZBeQii7RoHVsDv7lGnsfJQU_zt8kJwzdW7EGFZV_caX2PbZiCLtXw/pub?gid=70406382&single=true&output=csv",
+  quiebresPivot:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vTiMewjGXRQVZBeQii7RoHVsDv7lGnsfJQU_zt8kJwzdW7EGFZV_caX2PbZiCLtXw/pub?gid=1137881904&single=true&output=csv",
+  pedidos:          "https://docs.google.com/spreadsheets/d/e/2PACX-1vTcf45cGLEnK6GhRaEkd9y9VedIaAWO-anVD7xPi_NgKxEnOfbhYFMZX0y6wEYRSg/pub?output=csv",
+  viajesEntregas:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTcf45cGLEnK6GhRaEkd9y9VedIaAWO-anVD7xPi_NgKxEnOfbhYFMZX0y6wEYRSg/pub?gid=562157111&single=true&output=csv",
+  bocas:            "https://docs.google.com/spreadsheets/d/e/2PACX-1vTcf45cGLEnK6GhRaEkd9y9VedIaAWO-anVD7xPi_NgKxEnOfbhYFMZX0y6wEYRSg/pub?gid=87143886&single=true&output=csv",
+  pendTiendas:      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRvtf-kgQW6gaQSTtaQRuC5MDpy4Jt4vsuOSyQcFeFB5F4dMDrYYRf-ZlgFKicQ8x3tBhL6OjuHFXML/pub?gid=630466972&single=true&output=csv",
+  minTiendas:       "https://docs.google.com/spreadsheets/d/e/2PACX-1vRvtf-kgQW6gaQSTtaQRuC5MDpy4Jt4vsuOSyQcFeFB5F4dMDrYYRf-ZlgFKicQ8x3tBhL6OjuHFXML/pub?gid=989925887&single=true&output=csv",
+  stockTiendas:     "https://docs.google.com/spreadsheets/d/e/2PACX-1vRvtf-kgQW6gaQSTtaQRuC5MDpy4Jt4vsuOSyQcFeFB5F4dMDrYYRf-ZlgFKicQ8x3tBhL6OjuHFXML/pub?gid=1728817942&single=true&output=csv"
+};
+const SRC_LABELS = {
+  consolidado:"SCRD · consolidado", maestroProducto:"SCRD · Maestro Producto", base:"SCRD · Base",
+  ventaMedia:"SCRD · Venta Media", quiebresPivot:"SCRD · Quiebres (pivot)",
+  pedidos:"Gestión Pedidos · Pedidos", viajesEntregas:"Gestión Pedidos · Viajes-entregas", bocas:"Gestión Pedidos · Bocas",
+  pendTiendas:"Parámetros · Pend Tdas", minTiendas:"Parámetros · Min Tdas", stockTiendas:"Parámetros · Stock Tiendas"
+};
+const LS_KEY = "cf_dash_sources_v1";
+const LS_AUTH = "cf_dash_admin_ok";
+// SHA-256 hash of the admin password (set below via setAdminPassword in console,
+// or just replace ADMIN_HASH with the output of sha256("tuClave")).
+const ADMIN_HASH = "REEMPLAZAR_CON_HASH_SHA256";
+
+function getSources(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+    return Object.assign({}, DEFAULT_SOURCES, saved);
+  }catch(e){ return Object.assign({}, DEFAULT_SOURCES); }
+}
+async function sha256(str){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+/* ==========================================================================
+   Estado global
+   ========================================================================== */
+const DB = {
+  consolidado: [],      // por SKU nacional
+  maestro: new Map(),   // ean -> {desc, familia, granNegocio, mrp}
+  base: [],             // {tienda, ean, ventaMedia, stock, quiebre}
+  bocas: new Map(),     // nTienda -> {nombre, formato, cluster, supervisor, bocaFiori, entregaDirecta, status}
+  bocasByBocaFiori: new Map(), // bocaFiori code -> nTienda
+  pedidos: [],          // {destinatario, fecha, material, cajas}
+  entregas: []          // {destinatario, fecha, material, cajas}
+};
+let charts = {};
+
+function num(v){
+  if(v===undefined||v===null) return 0;
+  if(typeof v==="number") return v;
+  const s = String(v).replace(/\s/g,"").replace(/\./g,"").replace(",",".").replace("%","");
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+function pct(v){
+  if(v===undefined||v===null||v==="") return null;
+  const s = String(v).trim();
+  if(s.endsWith("%")) return parseFloat(s.replace("%","").replace(",",".")) ;
+  const n = parseFloat(s.replace(",","."));
+  if(isNaN(n)) return null;
+  return n<=1 ? n*100 : n;
+}
+
+function fetchCsv(url){
+  return new Promise((resolve,reject)=>{
+    Papa.parse(url, {
+      download:true, header:true, skipEmptyLines:true,
+      complete: r=>resolve(r.data),
+      error: e=>reject(e)
+    });
+  });
+}
+
+async function loadAll(){
+  setStatus("loading","Cargando datos…");
+  const SRC = getSources();
+  try{
+    const [consolidado, maestroRows, baseRows, bocasRows, pedidosRows, entregasRows] = await Promise.all([
+      fetchCsv(SRC.consolidado),
+      fetchCsv(SRC.maestroProducto),
+      fetchCsv(SRC.base),
+      fetchCsv(SRC.bocas),
+      fetchCsv(SRC.pedidos),
+      fetchCsv(SRC.viajesEntregas)
+    ]);
+
+    // Maestro Producto: EAN -> ficha
+    DB.maestro = new Map();
+    maestroRows.forEach(r=>{
+      const ean = (r.EAN||"").toString().replace(/^\./,"").trim();
+      if(!ean) return;
+      DB.maestro.set(ean, {
+        desc: r.Descripcion || r["Descripcion"] || "",
+        familia: r.Familia || "",
+        granNegocio: r["Gran Negocio"] || "",
+        mrp: r.MRP || ""
+      });
+    });
+
+    // Consolidado: nivel SKU nacional
+    DB.consolidado = consolidado.map(r=>({
+      ean: (r.Ean||"").toString().trim(),
+      descripcion: r["Descripcion (mrp)"] || r["Descripción"] || "",
+      familia: r["Familia"] || r["Gran negocio"] || "",
+      granNegocio: r["Gran negocio"] || "",
+      quiebres: num(r["Quiebres"]),
+      doh: num(r["DOH"]),
+      dohCd: num(r["DOH cd"]),
+      stockUmg: num(r["Stock umg"]),
+      df: pct(r["DF"]),
+      dfHiper: pct(r["DF hiper"]),
+      dfMarket: pct(r["DF market"]),
+      dfExpress: pct(r["DF express"]),
+      ventaMedia: num(r["Venta Media "] || r["Venta Media"]),
+      pendienteUmg: num(r["Pendiente umg"])
+    })).filter(r=>r.ean);
+
+    // Bocas: tienda maestro + join Boca Fiori
+    DB.bocas = new Map();
+    DB.bocasByBocaFiori = new Map();
+    bocasRows.forEach(r=>{
+      const nTienda = (r["N° Tienda"]||"").toString().trim();
+      if(!nTienda) return;
+      const bocaFiori = (r["Boca Fiori"]||"").toString().trim();
+      const info = {
+        nombre: r["Nombre "] || r["Nombre"] || "",
+        formato: r["Formato"] || "",
+        cluster: r["Cluster"] || "",
+        regGeo: r["Reg Geografica"] || r["Zona Geografica"] || "",
+        supervisor: r["Supervisor"] || "Sin asignar",
+        bocaFiori: bocaFiori,
+        status: r["Status"] || "",
+        entregaDirecta: r["Entrega directa"] || ""
+      };
+      DB.bocas.set(nTienda, info);
+      if(bocaFiori) DB.bocasByBocaFiori.set(bocaFiori, nTienda);
+    });
+
+    // Base: Tienda x EAN (granularidad para cruces)
+    DB.base = baseRows.map(r=>({
+      tienda: (r[" Tienda"]||r["Tienda"]||"").toString().trim(),
+      ean: (r.Ean||"").toString().trim(),
+      ventaMedia: num(r["Vta media"]),
+      stock: num(r["Stock"]),
+      quiebre: num(r["Quiebres"])
+    })).filter(r=>r.tienda && r.ean);
+
+    // Pedidos
+    DB.pedidos = pedidosRows.map(r=>({
+      destinatario: (r["Destinatario mcía."]||"").toString().trim(),
+      fecha: r["Fecha del documento"] || "",
+      material: (r["Material"]||"").toString().trim(),
+      cajas: num(r["CAJ"])
+    })).filter(r=>r.destinatario);
+
+    // Viajes-entregas
+    DB.entregas = entregasRows.map(r=>({
+      destinatario: (r["Destinatario mcía."]||"").toString().trim(),
+      fecha: r["Fecha de entrega"] || "",
+      material: (r["Material"]||"").toString().trim(),
+      cajas: num(r["CAJ"])
+    })).filter(r=>r.destinatario);
+
+    setStatus("ok", "Datos al día");
+    document.getElementById("lastUpdated").textContent =
+      "Actualizado " + new Date().toLocaleString("es-AR");
+    populateFilters();
+    render();
+  }catch(err){
+    console.error(err);
+    setStatus("err", "Error cargando datos");
+  }
+}
+
+function setStatus(kind,text){
+  const pill = document.getElementById("statusPill");
+  pill.className = "pill" + (kind==="ok" ? "" : kind==="err" ? " err" : " stale");
+  document.getElementById("statusText").textContent = text;
+}
+
+/* ==========================================================================
+   Filtros
+   ========================================================================== */
+function populateFilters(){
+  const tSel = document.getElementById("fTienda");
+  const fmtSel = document.getElementById("fFormato");
+  const supSel = document.getElementById("fSupervisor");
+  const famSel = document.getElementById("fFamilia");
+
+  const tiendas = [...DB.bocas.entries()].sort((a,b)=> a[0].localeCompare(b[0], undefined, {numeric:true}));
+  tSel.innerHTML = '<option value="">Todas</option>' +
+    tiendas.map(([n,info])=>`<option value="${n}">${n} — ${info.nombre}</option>`).join("");
+
+  const formatos = [...new Set([...DB.bocas.values()].map(b=>b.formato).filter(Boolean))].sort();
+  fmtSel.innerHTML = '<option value="">Todos</option>' + formatos.map(f=>`<option value="${f}">${f}</option>`).join("");
+
+  const sups = [...new Set([...DB.bocas.values()].map(b=>b.supervisor).filter(Boolean))].sort();
+  supSel.innerHTML = '<option value="">Todos</option>' + sups.map(s=>`<option value="${s}">${s}</option>`).join("");
+
+  const familias = [...new Set(DB.consolidado.map(c=>c.familia).filter(Boolean))].sort();
+  famSel.innerHTML = '<option value="">Todas</option>' + familias.map(f=>`<option value="${f}">${f}</option>`).join("");
+
+  [tSel,fmtSel,supSel,famSel].forEach(el=>el.addEventListener("change", render));
+  document.getElementById("fSku").addEventListener("input", debounce(render, 250));
+  document.getElementById("clearFilters").addEventListener("click", ()=>{
+    tSel.value=""; fmtSel.value=""; supSel.value=""; famSel.value="";
+    document.getElementById("fSku").value="";
+    render();
+  });
+}
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
+
+function currentFilters(){
+  return {
+    tienda: document.getElementById("fTienda").value,
+    formato: document.getElementById("fFormato").value,
+    supervisor: document.getElementById("fSupervisor").value,
+    familia: document.getElementById("fFamilia").value,
+    sku: document.getElementById("fSku").value.trim().toLowerCase()
+  };
+}
+
+function tiendasThatMatch(f){
+  // Devuelve el set de N° Tienda que cumplen formato/supervisor/tienda puntual
+  const out = new Set();
+  for(const [n,info] of DB.bocas.entries()){
+    if(f.tienda && n!==f.tienda) continue;
+    if(f.formato && info.formato!==f.formato) continue;
+    if(f.supervisor && info.supervisor!==f.supervisor) continue;
+    out.add(n);
+  }
+  return out;
+}
+function skuMatches(ean, f, tiendaSetActive){
+  if(!f.familia && !f.sku) return true;
+  const m = DB.maestro.get(ean);
+  if(f.familia){
+    const fam = (DB.consolidado.find(c=>c.ean===ean)||{}).familia || (m&&m.familia) || "";
+    if(fam !== f.familia) return false;
+  }
+  if(f.sku){
+    const desc = ((m&&m.desc)||"").toLowerCase();
+    if(!ean.toLowerCase().includes(f.sku) && !desc.includes(f.sku)) return false;
+  }
+  return true;
+}
+
+/* ==========================================================================
+   Render
+   ========================================================================== */
+function render(){
+  const f = currentFilters();
+  const tiendaSet = tiendasThatMatch(f);
+  const anyStoreFilter = !!(f.tienda || f.formato || f.supervisor);
+
+  // --- filtered Base rows (Tienda x SKU) ---
+  const baseRows = DB.base.filter(r=>{
+    if(anyStoreFilter && !tiendaSet.has(r.tienda)) return false;
+    if((f.familia || f.sku) && !skuMatches(r.ean, f)) return false;
+    return true;
+  });
+
+  renderQuiebresKpiAndChart(baseRows);
+  renderFillRateAndDOH(f, tiendaSet, anyStoreFilter);
+  renderPedidosEntregas(f, tiendaSet, anyStoreFilter);
+  renderTopQuiebres(baseRows);
+}
+
+function renderQuiebresKpiAndChart(baseRows){
+  const total = baseRows.length;
+  const quiebres = baseRows.reduce((a,r)=>a+(r.quiebre>0?1:0),0);
+  const p = total ? (quiebres/total*100) : 0;
+  setKpi("kpiQuiebres", total ? p.toFixed(1)+"%" : "—",
+    `${quiebres.toLocaleString("es-AR")} de ${total.toLocaleString("es-AR")} combinaciones`,
+    p, p>15?"bad":p>7?"warn":"good");
+
+  // por cluster
+  const byCluster = new Map();
+  baseRows.forEach(r=>{
+    const info = DB.bocas.get(r.tienda);
+    const key = (info && info.cluster) ? info.cluster : "Sin cluster";
+    if(!byCluster.has(key)) byCluster.set(key,{q:0,t:0});
+    const o = byCluster.get(key); o.t++; if(r.quiebre>0) o.q++;
+  });
+  const labels = [...byCluster.keys()].sort();
+  const data = labels.map(k=>{const o=byCluster.get(k); return o.t? +(o.q/o.t*100).toFixed(1) : 0;});
+  drawBarChart("chartQuiebres", labels, data, "% quiebre");
+}
+
+function renderFillRateAndDOH(f, tiendaSet, anyStoreFilter){
+  let rows = DB.consolidado;
+  if(f.familia) rows = rows.filter(r=>r.familia===f.familia);
+  if(f.sku) rows = rows.filter(r=>{
+    const m = DB.maestro.get(r.ean);
+    const desc = ((m&&m.desc)||r.descripcion||"").toLowerCase();
+    return r.ean.toLowerCase().includes(f.sku) || desc.includes(f.sku);
+  });
+
+  // Fill rate: si hay filtro de formato, usar la columna DF del formato correspondiente
+  let dfVals;
+  if(f.formato){
+    const key = f.formato.toLowerCase().includes("hiper") ? "dfHiper"
+      : f.formato.toLowerCase().includes("market") ? "dfMarket"
+      : f.formato.toLowerCase().includes("express") ? "dfExpress" : "df";
+    dfVals = rows.map(r=>r[key]).filter(v=>v!==null && !isNaN(v));
+  } else {
+    dfVals = rows.map(r=>r.df).filter(v=>v!==null && !isNaN(v));
+  }
+  const dfAvg = dfVals.length ? dfVals.reduce((a,b)=>a+b,0)/dfVals.length : null;
+  setKpi("kpiFillRate", dfAvg!==null ? dfAvg.toFixed(1)+"%" : "—",
+    rows.length + " SKUs en el universo filtrado", dfAvg||0,
+    dfAvg!==null ? (dfAvg<70?"bad":dfAvg<90?"warn":"good") : "");
+
+  const dohVals = rows.map(r=>r.doh).filter(v=>v>0);
+  const dohAvg = dohVals.length ? dohVals.reduce((a,b)=>a+b,0)/dohVals.length : null;
+  setKpi("kpiDOH", dohAvg!==null ? dohAvg.toFixed(1)+" días" : "—",
+    "Sobre " + dohVals.length + " SKUs con stock", dohAvg? Math.min(dohAvg/30*100,100):0,
+    dohAvg!==null ? (dohAvg<3?"bad":dohAvg>21?"warn":"good") : "");
+}
+
+function renderPedidosEntregas(f, tiendaSet, anyStoreFilter){
+  const filterByStore = (row)=>{
+    if(!anyStoreFilter) return true;
+    const nT = DB.bocasByBocaFiori.get(row.destinatario);
+    return nT && tiendaSet.has(nT);
+  };
+  const ped = DB.pedidos.filter(filterByStore);
+  const ent = DB.entregas.filter(filterByStore);
+  const pedTotal = ped.reduce((a,r)=>a+r.cajas,0);
+  const entTotal = ent.reduce((a,r)=>a+r.cajas,0);
+  const cumpl = pedTotal ? (entTotal/pedTotal*100) : null;
+  setKpi("kpiPedidos", cumpl!==null ? cumpl.toFixed(1)+"%" : "—",
+    `${entTotal.toLocaleString("es-AR")} de ${pedTotal.toLocaleString("es-AR")} cajas`,
+    cumpl||0, cumpl!==null ? (cumpl<80?"bad":cumpl<95?"warn":"good") : "");
+
+  // gráfico por fecha (semana simplificada = fecha tal cual, agrupada)
+  const byDate = new Map();
+  ped.forEach(r=>{
+    const k = r.fecha; if(!k) return;
+    if(!byDate.has(k)) byDate.set(k,{ped:0,ent:0});
+    byDate.get(k).ped += r.cajas;
+  });
+  ent.forEach(r=>{
+    const k = r.fecha; if(!k) return;
+    if(!byDate.has(k)) byDate.set(k,{ped:0,ent:0});
+    byDate.get(k).ent += r.cajas;
+  });
+  const dates = [...byDate.keys()].sort().slice(-12);
+  drawLineChart("chartPedidos", dates,
+    dates.map(d=>byDate.get(d).ped),
+    dates.map(d=>byDate.get(d).ent));
+
+  // tabla por supervisor
+  const bySup = new Map();
+  ped.forEach(r=>{
+    const nT = DB.bocasByBocaFiori.get(r.destinatario);
+    const sup = (nT && DB.bocas.get(nT) && DB.bocas.get(nT).supervisor) || "Sin asignar";
+    if(!bySup.has(sup)) bySup.set(sup,{ped:0,ent:0});
+    bySup.get(sup).ped += r.cajas;
+  });
+  ent.forEach(r=>{
+    const nT = DB.bocasByBocaFiori.get(r.destinatario);
+    const sup = (nT && DB.bocas.get(nT) && DB.bocas.get(nT).supervisor) || "Sin asignar";
+    if(!bySup.has(sup)) bySup.set(sup,{ped:0,ent:0});
+    bySup.get(sup).ent += r.cajas;
+  });
+  const tbody = document.getElementById("tblSupervisor");
+  const rowsHtml = [...bySup.entries()]
+    .sort((a,b)=>b[1].ped-a[1].ped)
+    .slice(0,20)
+    .map(([sup,o])=>{
+      const c = o.ped? (o.ent/o.ped*100) : 0;
+      const tag = c<80?"bad":c<95?"warn":"good";
+      return `<tr><td>${sup}</td><td class="num">${o.ped.toLocaleString("es-AR")}</td><td class="num">${o.ent.toLocaleString("es-AR")}</td><td class="num"><span class="tag ${tag}">${c.toFixed(1)}%</span></td></tr>`;
+    }).join("");
+  tbody.innerHTML = rowsHtml || '<tr><td colspan="4" class="empty-note">Sin datos para este filtro</td></tr>';
+}
+
+function renderTopQuiebres(baseRows){
+  const byEan = new Map();
+  baseRows.forEach(r=>{
+    if(!byEan.has(r.ean)) byEan.set(r.ean,{q:0,t:0});
+    const o = byEan.get(r.ean); o.t++; if(r.quiebre>0) o.q++;
+  });
+  const top = [...byEan.entries()]
+    .filter(([,o])=>o.q>0)
+    .sort((a,b)=>b[1].q-a[1].q)
+    .slice(0,15);
+  const tbody = document.getElementById("tblTopQuiebres");
+  tbody.innerHTML = top.length ? top.map(([ean,o])=>{
+    const m = DB.maestro.get(ean) || {};
+    const c = DB.consolidado.find(x=>x.ean===ean) || {};
+    const pctQ = o.t ? (o.q/o.t*100) : 0;
+    return `<tr>
+      <td>${ean}</td>
+      <td>${m.desc || c.descripcion || "—"}</td>
+      <td>${c.familia || m.familia || "—"}</td>
+      <td class="num">${o.q}</td>
+      <td class="num">${o.t}</td>
+      <td class="num"><span class="tag ${pctQ>30?'bad':pctQ>10?'warn':''}">${pctQ.toFixed(0)}%</span></td>
+    </tr>`;
+  }).join("") : '<tr><td colspan="6" class="empty-note">Sin quiebres en este filtro</td></tr>';
+}
+
+function setKpi(id, value, sub, barPct, tone){
+  const el = document.getElementById(id);
+  el.classList.remove("na","warn","bad","good");
+  if(tone) el.classList.add(tone);
+  el.querySelector(".value").textContent = value;
+  el.querySelector(".sub").textContent = sub;
+  const bar = el.querySelector(".bar i");
+  if(bar) bar.style.width = Math.max(0,Math.min(100,barPct||0)) + "%";
+}
+
+/* ==========================================================================
+   Charts
+   ========================================================================== */
+const CHART_COLORS = {accent:"#2fd3c2", warn:"#f2a341", grid:"#2a323f", text:"#8b95a3"};
+function baseChartOpts(){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:CHART_COLORS.text, font:{size:11}}}},
+    scales:{
+      x:{ticks:{color:CHART_COLORS.text,font:{size:10}}, grid:{color:CHART_COLORS.grid}},
+      y:{ticks:{color:CHART_COLORS.text,font:{size:10}}, grid:{color:CHART_COLORS.grid}}
+    }
+  };
+}
+function drawBarChart(canvasId, labels, data, label){
+  if(charts[canvasId]) charts[canvasId].destroy();
+  const ctx = document.getElementById(canvasId).getContext("2d");
+  charts[canvasId] = new Chart(ctx, {
+    type:"bar",
+    data:{labels, datasets:[{label, data, backgroundColor:CHART_COLORS.warn, borderRadius:5}]},
+    options: baseChartOpts()
+  });
+}
+function drawLineChart(canvasId, labels, pedData, entData){
+  if(charts[canvasId]) charts[canvasId].destroy();
+  const ctx = document.getElementById(canvasId).getContext("2d");
+  charts[canvasId] = new Chart(ctx, {
+    type:"line",
+    data:{labels, datasets:[
+      {label:"Pedido", data:pedData, borderColor:CHART_COLORS.text, backgroundColor:"transparent", tension:.3},
+      {label:"Entregado", data:entData, borderColor:CHART_COLORS.accent, backgroundColor:"transparent", tension:.3}
+    ]},
+    options: baseChartOpts()
+  });
+}
+
+/* ==========================================================================
+   Admin panel
+   ========================================================================== */
+const gear = document.getElementById("adminGear");
+const modal = document.getElementById("adminModal");
+const loginBody = document.getElementById("loginBody");
+const adminBody = document.getElementById("adminBody");
+
+gear.addEventListener("click", ()=>{
+  modal.classList.add("show");
+  if(sessionStorage.getItem(LS_AUTH)==="1"){
+    openAdminBody();
+  } else {
+    loginBody.style.display="block"; adminBody.classList.remove("show");
+  }
+});
+document.getElementById("cancelLogin").addEventListener("click", ()=>modal.classList.remove("show"));
+document.getElementById("closeAdmin").addEventListener("click", ()=>modal.classList.remove("show"));
+modal.addEventListener("click", e=>{ if(e.target===modal) modal.classList.remove("show"); });
+
+document.getElementById("submitLogin").addEventListener("click", doLogin);
+document.getElementById("adminPass").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+async function doLogin(){
+  const val = document.getElementById("adminPass").value;
+  const hash = await sha256(val);
+  if(hash === ADMIN_HASH){
+    sessionStorage.setItem(LS_AUTH,"1");
+    document.getElementById("loginErr").classList.remove("show");
+    openAdminBody();
+  } else {
+    document.getElementById("loginErr").classList.add("show");
+  }
+}
+function openAdminBody(){
+  loginBody.style.display="none";
+  adminBody.classList.add("show");
+  const cur = getSources();
+  document.getElementById("srcRows").innerHTML = Object.keys(DEFAULT_SOURCES).map(k=>`
+    <div class="src-row">
+      <label>${SRC_LABELS[k]}</label>
+      <input type="text" data-key="${k}" value="${(cur[k]||"").replace(/"/g,'&quot;')}">
+    </div>`).join("");
+}
+document.getElementById("saveSrc").addEventListener("click", ()=>{
+  const inputs = document.querySelectorAll("#srcRows input");
+  const obj = {};
+  inputs.forEach(i=>{ obj[i.dataset.key] = i.value.trim(); });
+  localStorage.setItem(LS_KEY, JSON.stringify(obj));
+  modal.classList.remove("show");
+  loadAll();
+});
+document.getElementById("refreshBtn").addEventListener("click", loadAll);
+
+/* ==========================================================================
+   Init
+   ========================================================================== */
+loadAll();
+</script>
+</body>
+</html>
