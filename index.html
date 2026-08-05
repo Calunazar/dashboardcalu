@@ -884,21 +884,27 @@ async function loadAllAuto(){
   }
 
   await loadSCRD(scrdBlob);
-  diag.push({label:'SCRD → procesado',ok:!!data.length,detail:fmtNum(data.length)+' filas Tienda×EAN'});
+  {
+    const s=document.getElementById('statusScore');
+    diag.push({label:'SCRD → procesado', ok:s.classList.contains('ok'), detail:s.textContent});
+  }
 
   if(Object.keys(storeByNum).length){
     await loadGestionPedidos(gpBlob);
-    diag.push({label:'Gestión de Pedidos → procesado',ok:true,detail:fmtNum(Object.keys(afo.purchases).length)+' compras, '+fmtNum(Object.keys(afo.deliveries).length)+' entregas'});
+    const s=document.getElementById('statusAFO');
+    const zero = Object.keys(afo.purchases).length===0 && Object.keys(afo.deliveries).length===0;
+    diag.push({label:'Gestión de Pedidos → procesado', ok:s.classList.contains('ok') && !zero, detail:s.textContent});
   } else {
     diag.push({label:'Gestión de Pedidos → procesado',ok:false,detail:'no se procesó: no hay maestro de tiendas (ni Maestro Tiendas ni Bocas)'});
   }
 
   if(paramBlob){
     await loadParametros(paramBlob);
-    diag.push({label:'Parámetros → procesado',ok:paramsLoaded,detail:paramsLoaded?'aplicado':'no se pudo aplicar'});
+    const s=document.getElementById('statusParam');
+    diag.push({label:'Parámetros → procesado', ok:paramsLoaded, detail:s.textContent});
   }
 
-  setDiag(diag.filter(d=>!d.ok || d.label.includes('pre-pasada')===false ? true : true));
+  setDiag(diag);
   const anyErr=diag.some(d=>!d.ok);
   document.getElementById('autoStatus').textContent = data.length
     ? ('Datos al día — '+new Date().toLocaleString('es-AR')+(anyErr?' (con avisos, ver arriba)':''))
