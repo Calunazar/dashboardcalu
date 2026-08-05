@@ -4,6 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard Logístico Carrefour</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#667085;--line:#e5e7eb;--brand:#123c69;--accent:#2f80ed;--good:#1f9d55;--bad:#d92d20;--warn:#f79009;--soft:#eef4ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,Segoe UI,Arial,sans-serif}header{background:linear-gradient(135deg,#0b2341,#174a7c);color:white;padding:24px 32px}h1{margin:0 0 6px;font-size:28px}header p{margin:0;color:#dbeafe}.wrap{padding:22px 28px;max-width:1480px;margin:auto}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.tab{border:1px solid var(--line);background:white;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:700;color:#344054}.tab.active{background:var(--brand);color:white}.tab.locked{opacity:.55}.section{display:none}.section.active{display:block}.grid{display:grid;gap:16px}.grid.kpi{grid-template-columns:repeat(6,minmax(150px,1fr))}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 4px 14px rgba(16,24,40,.06)}.kpi-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}.kpi-value{font-size:28px;font-weight:800;margin-top:6px}.filters{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;align-items:end}.field label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:0 0 6px}.field select,.field input{min-width:170px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:white}.dropgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.drop{border:2px dashed #98a2b3;background:#fff;border-radius:20px;padding:28px;text-align:center;min-height:230px}.drop.drag{background:#eef4ff;border-color:#2f80ed}.btn{background:var(--accent);color:white;border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}.btn.secondary{background:#475467}.btn:disabled{opacity:.5;cursor:not-allowed}.muted{color:var(--muted)}table{border-collapse:collapse;width:100%;font-size:13px;background:white}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#f8fafc;color:#344054;position:sticky;top:0;z-index:1}.tablebox{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:14px}.two{grid-template-columns:1.1fr .9fr}.three{grid-template-columns:repeat(3,1fr)}.insight{padding:14px;border-left:5px solid var(--accent);background:#f8fafc;border-radius:10px;margin:10px 0}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--soft);color:#174a7c;font-weight:700;font-size:12px}.status{margin-top:14px;font-weight:700}.ok{color:var(--good)}.err{color:var(--bad)}.warn{color:var(--warn)}.barrow{display:grid;grid-template-columns:340px 1fr 75px;gap:10px;align-items:center;margin:9px 0}.bar{height:22px;border-radius:999px;background:#e8eef7;overflow:hidden}.bar span{display:block;height:100%;background:linear-gradient(90deg,#81b5f8,#123c69)}.gapnote{padding:12px 14px;border-left:5px solid var(--warn);background:#fffaf0;border-radius:10px;margin:8px 0;font-size:13px}.assume{padding:10px 14px;border:1px solid var(--line);border-radius:10px;margin:8px 0;font-size:13px}.assume b{color:var(--brand)}@media(max-width:1100px){.grid.kpi,.two,.three,.dropgrid{grid-template-columns:1fr}.wrap{padding:16px}.kpi-value{font-size:24px}.barrow{grid-template-columns:1fr}}
 </style>
@@ -180,7 +181,9 @@
       <p class="muted" style="margin:0 0 16px">Links de Google Sheets publicados como workbook completo (<code>pub?output=xlsx</code>). Se guardan solo en este navegador.</p>
       <div class="field" style="margin-bottom:10px"><label>SCRD Carrefour</label><input type="text" id="srcScrd" style="width:100%"></div>
       <div class="field" style="margin-bottom:10px"><label>Gestión de Pedidos</label><input type="text" id="srcGP" style="width:100%"></div>
-      <div class="field" style="margin-bottom:10px"><label>Parámetros (opcional)</label><input type="text" id="srcParam" style="width:100%"></div>
+      <div class="field" style="margin-bottom:10px"><label>Parámetros · Min Tdas</label><input type="text" id="srcParamMin" style="width:100%"></div>
+      <div class="field" style="margin-bottom:10px"><label>Parámetros · Pend Tdas</label><input type="text" id="srcParamPend" style="width:100%"></div>
+      <div class="field" style="margin-bottom:10px"><label>Parámetros · Stock Tiendas</label><input type="text" id="srcParamStock" style="width:100%"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px">
         <button class="btn secondary" id="showUploadTab">Cargar archivos a mano</button>
         <div style="display:flex;gap:10px">
@@ -823,7 +826,9 @@ function renderScrdTable(rows){
 const DEFAULT_SOURCES={
   scrd:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTiMewjGXRQVZBeQii7RoHVsDv7lGnsfJQU_zt8kJwzdW7EGFZV_caX2PbZiCLtXw/pub?output=xlsx",
   gp:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTcf45cGLEnK6GhRaEkd9y9VedIaAWO-anVD7xPi_NgKxEnOfbhYFMZX0y6wEYRSg/pub?output=xlsx",
-  param:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRvtf-kgQW6gaQSTtaQRuC5MDpy4Jt4vsuOSyQcFeFB5F4dMDrYYRf-ZlgFKicQ8x3tBhL6OjuHFXML/pub?output=xlsx"
+  paramMin:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRvtf-kgQW6gaQSTtaQRuC5MDpy4Jt4vsuOSyQcFeFB5F4dMDrYYRf-ZlgFKicQ8x3tBhL6OjuHFXML/pub?gid=989925887&single=true&output=csv",
+  paramPend:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRvtf-kgQW6gaQSTtaQRuC5MDpy4Jt4vsuOSyQcFeFB5F4dMDrYYRf-ZlgFKicQ8x3tBhL6OjuHFXML/pub?gid=630466972&single=true&output=csv",
+  paramStock:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRvtf-kgQW6gaQSTtaQRuC5MDpy4Jt4vsuOSyQcFeFB5F4dMDrYYRf-ZlgFKicQ8x3tBhL6OjuHFXML/pub?gid=1728817942&single=true&output=csv"
 };
 const LS_SRC="cf_dash_sources_v2", LS_AUTH="cf_dash_admin_ok";
 const ADMIN_HASH="REEMPLAZAR_CON_HASH_SHA256";
@@ -850,13 +855,68 @@ function setDiag(rows){
   panel.innerHTML=rows.map(r=>`<div>${r.ok?'✅':'🔴'} <b>${r.label}</b>: ${r.detail}</div>`).join('');
 }
 
+function fetchText(url,label){
+  if(!url) return Promise.reject(new Error(label+': no hay URL configurada.'));
+  return fetch(url).then(r=>{
+    if(!r.ok) throw new Error(label+': HTTP '+r.status+' — revisá que el link siga publicado.');
+    return r.text();
+  }).catch(e=>{ throw new Error(label+': '+(e.message||'fallo de red o CORS')); });
+}
+async function loadParametrosCsv(urls){
+  try{
+    setStatus('statusParam','Leyendo Parámetros (CSV por hoja)...','muted');await tick();
+
+    const minText=await fetchText(urls.paramMin,'Parámetros · Min Tdas');
+    const minRows=Papa.parse(minText,{skipEmptyLines:false}).data;
+    const minHIdx=findHeader(minRows,['ean']);
+    const minH=minRows[minHIdx];
+    const iMinEan=findCol(minH,'Ean');
+    const minCols=tiendaColsOf(minH,iMinEan);
+    const newMinByKey={};
+    for(const r of minRows.slice(minHIdx+1)){
+      if(!r)continue;const ean=r[iMinEan];if(ean==null||ean==='')continue;
+      const eanKey=String(ean).trim();
+      for(const idxStr in minCols){
+        const idx=Number(idxStr),tKey=minCols[idxStr],val=r[idx];
+        if(val!=null&&val!=='')newMinByKey[eanKey+'|'+tKey]=nval(val);
+      }
+    }
+    await tick();
+
+    const pendText=await fetchText(urls.paramPend,'Parámetros · Pend Tdas');
+    const pendRows=Papa.parse(pendText,{skipEmptyLines:false}).data;
+    const pendHIdx=findHeader(pendRows,['ean']);
+    const pendH=pendRows[pendHIdx];
+    const iPendEan=findCol(pendH,'Ean');
+    const pendCols=tiendaColsOf(pendH,iPendEan);
+    const newPendByKey={};const newPendQtyByKey={};
+    for(const r of pendRows.slice(pendHIdx+1)){
+      if(!r)continue;const ean=r[iPendEan];if(ean==null||ean==='')continue;
+      const eanKey=String(ean).trim();
+      for(const idxStr in pendCols){
+        const idx=Number(idxStr),tKey=pendCols[idxStr],val=r[idx];
+        newPendByKey[eanKey+'|'+tKey]=(val==null||val==='')?'Sin dato':(nval(val)>0?'Sí':'No');
+        if(val!=null&&val!=='')newPendQtyByKey[eanKey+'|'+tKey]=nval(val);
+      }
+    }
+
+    minByKey=newMinByKey;pendByKey=newPendByKey;pendQtyByKey=newPendQtyByKey;
+    distByKey={};cdStockByEanCD={};paramsLoaded=true;
+    applyParametrosToData();
+    setStatus('statusParam','Parámetros cargados: '+fmtNum(Object.keys(minByKey).length)+' mínimos y '+fmtNum(Object.keys(pendByKey).length)+' pendientes. Sin Dist/Stk Centros en este archivo: las pestañas de Oportunidades por CD quedan sin datos.','warn');
+  }catch(e){
+    console.error(e);
+    setStatus('statusParam','Error: '+e.message,'err');
+  }
+}
+
 async function loadAllAuto(){
   const SRC=getSources();
   document.getElementById('autoStatus').textContent='Cargando…';
   setDiag([]);
   storeByNum={};bfToTienda={};
   const diag=[];
-  let scrdBlob=null, gpBlob=null, paramBlob=null;
+  let scrdBlob=null, gpBlob=null;
   try{
     [scrdBlob,gpBlob]=await Promise.all([
       fetchBlob(SRC.scrd,'SCRD Carrefour'),
@@ -870,8 +930,6 @@ async function loadAllAuto(){
     document.getElementById('autoStatus').textContent='Error cargando datos — ver detalle arriba';
     return;
   }
-  try{ paramBlob=await fetchBlob(SRC.param,'Parámetros'); diag.push({label:'Parámetros',ok:true,detail:'descargado'}); }
-  catch(e){ diag.push({label:'Parámetros',ok:false,detail:e.message+' (opcional, se sigue sin Mínimos/Pendientes/Oportunidades por CD)'}); }
 
   // Pre-pasada: Bocas → storeByNum/bfToTienda ANTES de armar `data` en loadSCRD,
   // porque el SCRD real no trae "Maestro Tiendas" (Bocas lo reemplaza).
@@ -898,8 +956,8 @@ async function loadAllAuto(){
     diag.push({label:'Gestión de Pedidos → procesado',ok:false,detail:'no se procesó: no hay maestro de tiendas (ni Maestro Tiendas ni Bocas)'});
   }
 
-  if(paramBlob){
-    await loadParametros(paramBlob);
+  await loadParametrosCsv(SRC);
+  {
     const s=document.getElementById('statusParam');
     diag.push({label:'Parámetros → procesado', ok:paramsLoaded, detail:s.textContent});
   }
@@ -945,14 +1003,18 @@ function openAdminBody(){
   const cur=getSources();
   document.getElementById('srcScrd').value=cur.scrd||'';
   document.getElementById('srcGP').value=cur.gp||'';
-  document.getElementById('srcParam').value=cur.param||'';
+  document.getElementById('srcParamMin').value=cur.paramMin||'';
+  document.getElementById('srcParamPend').value=cur.paramPend||'';
+  document.getElementById('srcParamStock').value=cur.paramStock||'';
   document.getElementById('tabUpload').style.display='inline-block';
 }
 document.getElementById('saveSrc').addEventListener('click', ()=>{
   localStorage.setItem(LS_SRC, JSON.stringify({
     scrd: document.getElementById('srcScrd').value.trim(),
     gp: document.getElementById('srcGP').value.trim(),
-    param: document.getElementById('srcParam').value.trim()
+    paramMin: document.getElementById('srcParamMin').value.trim(),
+    paramPend: document.getElementById('srcParamPend').value.trim(),
+    paramStock: document.getElementById('srcParamStock').value.trim()
   }));
   modal.style.display='none';
   loadAllAuto();
