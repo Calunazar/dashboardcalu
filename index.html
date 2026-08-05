@@ -156,6 +156,26 @@ button.primary:hover{background:#3fe0cf;}
 footer{
   text-align:center;color:var(--text-dim);font-size:11px;padding:20px;font-family:var(--mono);
 }
+
+/* diagnostic panel */
+.diag-panel{
+  display:none;position:sticky;top:71px;z-index:19;
+  background:#1c1418;border-bottom:1px solid #4a2530;
+  padding:12px 28px;
+}
+.diag-panel.show{display:block;}
+.diag-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.diag-head strong{font-size:12.5px;color:var(--text);}
+.diag-row{
+  display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12px;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.diag-row:last-child{border-bottom:none;}
+.diag-dot{width:7px;height:7px;border-radius:50%;background:var(--good);flex:none;}
+.diag-row.diag-bad .diag-dot{background:var(--bad);}
+.diag-label{min-width:180px;color:var(--text-dim);font-family:var(--mono);font-size:11px;}
+.diag-detail{color:var(--text);}
+.diag-row.diag-bad .diag-detail{color:var(--bad);}
 </style>
 </head>
 <body>
@@ -169,10 +189,18 @@ footer{
     </div>
   </div>
   <div class="top-actions">
-    <div class="pill stale" id="statusPill"><span class="dot"></span><span id="statusText">Sin datos</span></div>
+    <div class="pill stale" id="statusPill" title="Click para ver el detalle"><span class="dot"></span><span id="statusText">Sin datos</span></div>
     <button class="ghost" id="refreshBtn">↻ Refrescar</button>
   </div>
 </header>
+
+<div class="diag-panel" id="diagPanel">
+  <div class="diag-head">
+    <strong>Diagnóstico de carga</strong>
+    <button class="ghost" id="diagClose">Cerrar</button>
+  </div>
+  <div id="diagBody"></div>
+</div>
 
 <main>
 
@@ -368,28 +396,71 @@ function pct(v){
   return n<=1 ? n*100 : n;
 }
 
-function fetchCsv(url){
+function fetchCsv(url, label){
   return new Promise((resolve,reject)=>{
+    if(!url){ reject({label, message:"No hay URL configurada para esta fuente."}); return; }
     Papa.parse(url, {
       download:true, header:true, skipEmptyLines:true,
-      complete: r=>resolve(r.data),
-      error: e=>reject(e)
+      complete: r=>{
+        // Si Google devuelve una página de login/HTML en vez de CSV, Papa igual
+        // "parsea" algo pero sin las columnas esperadas: lo detectamos por
+        // ausencia total de columnas reconocibles o filas vacías.
+        if(!r.data || r.data.length===0){
+          reject({label, message:"La fuente respondió pero sin filas. Revisá que la hoja esté publicada como CSV (Archivo → Compartir → Publicar en la web) y que el gid sea correcto."});
+          return;
+        }
+        const cols = Object.keys(r.data[0]||{});
+        if(cols.length<=1 && cols[0] && /html|doctype/i.test(cols[0])){
+          reject({label, message:"La fuente devolvió HTML en vez de CSV — probablemente el link no está publicado como 'Anyone with the link' o el formato de salida no es CSV."});
+          return;
+        }
+        resolve(r.data);
+      },
+      error: e=>reject({label, message:(e && e.message) || "No se pudo descargar (posible bloqueo de red o CORS)."})
     });
   });
 }
 
 async function loadAll(){
   setStatus("loading","Cargando datos…");
+  hideDiag();
   const SRC = getSources();
+  const jobs = [
+    {key:"consolidado", label:SRC_LABELS.consolidado, p:fetchCsv(SRC.consolidado, SRC_LABELS.consolidado)},
+    {key:"maestroProducto", label:SRC_LABELS.maestroProducto, p:fetchCsv(SRC.maestroProducto, SRC_LABELS.maestroProducto)},
+    {key:"base", label:SRC_LABELS.base, p:fetchCsv(SRC.base, SRC_LABELS.base)},
+    {key:"bocas", label:SRC_LABELS.bocas, p:fetchCsv(SRC.bocas, SRC_LABELS.bocas)},
+    {key:"pedidos", label:SRC_LABELS.pedidos, p:fetchCsv(SRC.pedidos, SRC_LABELS.pedidos)},
+    {key:"viajesEntregas", label:SRC_LABELS.viajesEntregas, p:fetchCsv(SRC.viajesEntregas, SRC_LABELS.viajesEntregas)}
+  ];
+  const settled = await Promise.allSettled(jobs.map(j=>j.p));
+  const results = {};
+  const diagRows = [];
+  let hasFatalError = false;
+  settled.forEach((res, i)=>{
+    const job = jobs[i];
+    if(res.status==="fulfilled"){
+      results[job.key] = res.value;
+      diagRows.push({label: job.label, ok:true, detail: res.value.length.toLocaleString("es-AR")+" filas"});
+    } else {
+      hasFatalError = true;
+      results[job.key] = [];
+      const msg = (res.reason && res.reason.message) || "Error desconocido";
+      diagRows.push({label: job.label, ok:false, detail: msg});
+    }
+  });
+  renderDiag(diagRows);
+
+  if(hasFatalError){
+    setStatus("err", "Algunas fuentes no cargaron — ver diagnóstico");
+    document.getElementById("lastUpdated").textContent =
+      "Último intento " + new Date().toLocaleString("es-AR");
+    // seguimos igual con lo que sí cargó, para no dejar el dashboard vacío del todo
+  }
+
   try{
-    const [consolidado, maestroRows, baseRows, bocasRows, pedidosRows, entregasRows] = await Promise.all([
-      fetchCsv(SRC.consolidado),
-      fetchCsv(SRC.maestroProducto),
-      fetchCsv(SRC.base),
-      fetchCsv(SRC.bocas),
-      fetchCsv(SRC.pedidos),
-      fetchCsv(SRC.viajesEntregas)
-    ]);
+    const { consolidado, maestroProducto: maestroRows, base: baseRows, bocas: bocasRows,
+            pedidos: pedidosRows, viajesEntregas: entregasRows } = results;
 
     // Maestro Producto: EAN -> ficha
     DB.maestro = new Map();
@@ -468,22 +539,56 @@ async function loadAll(){
       cajas: num(r["CAJ"])
     })).filter(r=>r.destinatario);
 
-    setStatus("ok", "Datos al día");
-    document.getElementById("lastUpdated").textContent =
-      "Actualizado " + new Date().toLocaleString("es-AR");
+    if(!hasFatalError){
+      setStatus("ok", "Datos al día");
+      document.getElementById("lastUpdated").textContent =
+        "Actualizado " + new Date().toLocaleString("es-AR");
+    } else {
+      document.getElementById("lastUpdated").textContent =
+        "Actualizado parcialmente " + new Date().toLocaleString("es-AR") + " — ver diagnóstico";
+    }
     populateFilters();
     render();
   }catch(err){
     console.error(err);
-    setStatus("err", "Error cargando datos");
+    setStatus("err", "Error procesando los datos");
+    renderDiag([{label:"Procesamiento", ok:false, detail:(err&&err.message)||String(err)}], true);
   }
 }
 
 function setStatus(kind,text){
   const pill = document.getElementById("statusPill");
   pill.className = "pill" + (kind==="ok" ? "" : kind==="err" ? " err" : " stale");
+  pill.style.cursor = kind==="err" ? "pointer" : "default";
   document.getElementById("statusText").textContent = text;
 }
+
+/* ==========================================================================
+   Panel de diagnóstico — muestra, fuente por fuente, si cargó bien o no,
+   sin exponer las URLs (solo el nombre lógico de cada hoja).
+   ========================================================================== */
+function renderDiag(rows, append){
+  const panel = document.getElementById("diagPanel");
+  const body = document.getElementById("diagBody");
+  const html = rows.map(r=>`
+    <div class="diag-row ${r.ok?'':'diag-bad'}">
+      <span class="diag-dot"></span>
+      <span class="diag-label">${r.label}</span>
+      <span class="diag-detail">${r.detail}</span>
+    </div>`).join("");
+  body.innerHTML = append ? body.innerHTML + html : html;
+  panel.classList.add("show");
+}
+function hideDiag(){
+  document.getElementById("diagPanel").classList.remove("show");
+  document.getElementById("diagBody").innerHTML = "";
+}
+document.getElementById("statusPill").addEventListener("click", ()=>{
+  document.getElementById("diagPanel").classList.toggle("show");
+});
+document.getElementById("diagClose").addEventListener("click", ()=>{
+  document.getElementById("diagPanel").classList.remove("show");
+});
 
 /* ==========================================================================
    Filtros
