@@ -1,922 +1,963 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Logístico · Carrefour</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard Logístico Carrefour</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-:root{
-  --bg:#12161c;
-  --panel:#1a1f28;
-  --panel2:#212833;
-  --line:#2a323f;
-  --text:#e7ebf0;
-  --text-dim:#8b95a3;
-  --accent:#2fd3c2;
-  --accent-dim:#1b9285;
-  --warn:#f2a341;
-  --bad:#e5636b;
-  --good:#5cc985;
-  --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-*{box-sizing:border-box;}
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  -webkit-font-smoothing:antialiased;
-}
-a{color:var(--accent);}
-header.topbar{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:18px 28px;border-bottom:1px solid var(--line);
-  background:linear-gradient(180deg,#151a21,#12161c);
-  position:sticky;top:0;z-index:20;
-}
-.brand{display:flex;align-items:center;gap:12px;}
-.brand-mark{
-  width:34px;height:34px;border-radius:8px;
-  background:conic-gradient(from 220deg,var(--accent),var(--accent-dim));
-  display:flex;align-items:center;justify-content:center;
-  font-weight:800;color:#0b1013;font-size:15px;
-}
-.brand h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px;}
-.brand span{display:block;font-size:11.5px;color:var(--text-dim);margin-top:1px;font-family:var(--mono);}
-.top-actions{display:flex;align-items:center;gap:14px;}
-.pill{
-  font-size:11px;color:var(--text-dim);font-family:var(--mono);
-  border:1px solid var(--line);padding:5px 10px;border-radius:20px;
-  display:flex;align-items:center;gap:6px;
-}
-.pill .dot{width:6px;height:6px;border-radius:50%;background:var(--good);}
-.pill.stale .dot{background:var(--warn);}
-.pill.err .dot{background:var(--bad);}
-button.ghost{
-  background:transparent;border:1px solid var(--line);color:var(--text-dim);
-  padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;
-  font-family:inherit;transition:border-color .15s,color .15s;
-}
-button.ghost:hover{border-color:var(--accent-dim);color:var(--text);}
-main{padding:24px 28px 60px;max-width:1400px;margin:0 auto;}
-
-.filters{
-  display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;
-  background:var(--panel);border:1px solid var(--line);border-radius:12px;
-  padding:16px;margin-bottom:20px;
-}
-.field{display:flex;flex-direction:column;gap:5px;min-width:170px;flex:1;}
-.field label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;}
-select,input[type=text],input[type=password]{
-  background:var(--panel2);border:1px solid var(--line);color:var(--text);
-  padding:8px 10px;border-radius:7px;font-size:13px;font-family:inherit;
-}
-select:focus,input:focus{outline:2px solid var(--accent-dim);outline-offset:1px;}
-.field.grow{flex:2;}
-.clear-btn{align-self:flex-end;}
-
-.kpi-grid{
-  display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px;
-}
-@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
-.kpi{
-  background:var(--panel);border:1px solid var(--line);border-radius:12px;
-  padding:16px 16px 14px;position:relative;overflow:hidden;
-}
-.kpi .label{font-size:11.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;}
-.kpi .value{font-family:var(--mono);font-size:28px;font-weight:600;margin-top:6px;}
-.kpi .sub{font-size:11.5px;color:var(--text-dim);margin-top:4px;}
-.kpi.na .value{color:var(--text-dim);font-size:20px;}
-.kpi .bar{height:3px;background:var(--line);border-radius:2px;margin-top:10px;overflow:hidden;}
-.kpi .bar i{display:block;height:100%;background:var(--accent);}
-.kpi.warn .value{color:var(--warn);}
-.kpi.bad .value{color:var(--bad);}
-.kpi.good .value{color:var(--good);}
-
-.grid-2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:22px;}
-@media(max-width:1000px){.grid-2{grid-template-columns:1fr;}}
-.card{
-  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;
-}
-.card h3{margin:0 0 14px;font-size:13.5px;font-weight:650;}
-.card h3 small{display:block;font-weight:400;color:var(--text-dim);font-size:11px;margin-top:2px;font-family:var(--mono);}
-.chart-wrap{position:relative;height:260px;}
-
-table{width:100%;border-collapse:collapse;font-size:12.5px;}
-th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);}
-th{color:var(--text-dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;}
-tbody tr:hover{background:var(--panel2);}
-td.num,th.num{text-align:right;font-family:var(--mono);}
-.table-scroll{max-height:340px;overflow:auto;}
-.tag{
-  display:inline-block;font-size:10.5px;font-family:var(--mono);
-  padding:1px 6px;border-radius:4px;background:var(--panel2);color:var(--text-dim);
-}
-.tag.bad{color:var(--bad);background:rgba(229,99,107,.12);}
-.tag.warn{color:var(--warn);background:rgba(242,163,65,.12);}
-.tag.good{color:var(--good);background:rgba(92,201,133,.12);}
-
-.empty-note{color:var(--text-dim);font-size:12px;padding:20px 0;text-align:center;}
-
-/* admin gear + modal */
-#adminGear{
-  position:fixed;bottom:18px;right:18px;width:38px;height:38px;border-radius:50%;
-  background:var(--panel);border:1px solid var(--line);color:var(--text-dim);
-  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;
-  z-index:40;transition:color .15s,border-color .15s;
-}
-#adminGear:hover{color:var(--accent);border-color:var(--accent-dim);}
-.modal-backdrop{
-  position:fixed;inset:0;background:rgba(8,10,13,.7);display:none;
-  align-items:center;justify-content:center;z-index:50;
-}
-.modal-backdrop.show{display:flex;}
-.modal{
-  background:var(--panel);border:1px solid var(--line);border-radius:14px;
-  width:min(560px,92vw);max-height:86vh;overflow:auto;padding:22px;
-}
-.modal h2{margin:0 0 4px;font-size:15px;}
-.modal p.hint{color:var(--text-dim);font-size:12px;margin:0 0 16px;}
-.modal .row{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
-.modal .row label{font-size:11.5px;color:var(--text-dim);}
-.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
-button.primary{
-  background:var(--accent);border:none;color:#0b1013;font-weight:650;
-  padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;
-}
-button.primary:hover{background:#3fe0cf;}
-.admin-panel-body{display:none;}
-.admin-panel-body.show{display:block;}
-.src-row{display:grid;grid-template-columns:130px 1fr;gap:8px;align-items:center;margin-bottom:8px;}
-.src-row label{font-size:11.5px;color:var(--text-dim);}
-.err-text{color:var(--bad);font-size:12px;margin-top:8px;display:none;}
-.err-text.show{display:block;}
-footer{
-  text-align:center;color:var(--text-dim);font-size:11px;padding:20px;font-family:var(--mono);
-}
-
-/* diagnostic panel */
-.diag-panel{
-  display:none;position:sticky;top:71px;z-index:19;
-  background:#1c1418;border-bottom:1px solid #4a2530;
-  padding:12px 28px;
-}
-.diag-panel.show{display:block;}
-.diag-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-.diag-head strong{font-size:12.5px;color:var(--text);}
-.diag-row{
-  display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12px;
-  border-bottom:1px solid rgba(255,255,255,.05);
-}
-.diag-row:last-child{border-bottom:none;}
-.diag-dot{width:7px;height:7px;border-radius:50%;background:var(--good);flex:none;}
-.diag-row.diag-bad .diag-dot{background:var(--bad);}
-.diag-label{min-width:180px;color:var(--text-dim);font-family:var(--mono);font-size:11px;}
-.diag-detail{color:var(--text);}
-.diag-row.diag-bad .diag-detail{color:var(--bad);}
+:root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#667085;--line:#e5e7eb;--brand:#123c69;--accent:#2f80ed;--good:#1f9d55;--bad:#d92d20;--warn:#f79009;--soft:#eef4ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,Segoe UI,Arial,sans-serif}header{background:linear-gradient(135deg,#0b2341,#174a7c);color:white;padding:24px 32px}h1{margin:0 0 6px;font-size:28px}header p{margin:0;color:#dbeafe}.wrap{padding:22px 28px;max-width:1480px;margin:auto}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.tab{border:1px solid var(--line);background:white;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:700;color:#344054}.tab.active{background:var(--brand);color:white}.tab.locked{opacity:.55}.section{display:none}.section.active{display:block}.grid{display:grid;gap:16px}.grid.kpi{grid-template-columns:repeat(6,minmax(150px,1fr))}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 4px 14px rgba(16,24,40,.06)}.kpi-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}.kpi-value{font-size:28px;font-weight:800;margin-top:6px}.filters{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;align-items:end}.field label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:0 0 6px}.field select,.field input{min-width:170px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:white}.dropgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.drop{border:2px dashed #98a2b3;background:#fff;border-radius:20px;padding:28px;text-align:center;min-height:230px}.drop.drag{background:#eef4ff;border-color:#2f80ed}.btn{background:var(--accent);color:white;border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}.btn.secondary{background:#475467}.btn:disabled{opacity:.5;cursor:not-allowed}.muted{color:var(--muted)}table{border-collapse:collapse;width:100%;font-size:13px;background:white}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#f8fafc;color:#344054;position:sticky;top:0;z-index:1}.tablebox{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:14px}.two{grid-template-columns:1.1fr .9fr}.three{grid-template-columns:repeat(3,1fr)}.insight{padding:14px;border-left:5px solid var(--accent);background:#f8fafc;border-radius:10px;margin:10px 0}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--soft);color:#174a7c;font-weight:700;font-size:12px}.status{margin-top:14px;font-weight:700}.ok{color:var(--good)}.err{color:var(--bad)}.warn{color:var(--warn)}.barrow{display:grid;grid-template-columns:340px 1fr 75px;gap:10px;align-items:center;margin:9px 0}.bar{height:22px;border-radius:999px;background:#e8eef7;overflow:hidden}.bar span{display:block;height:100%;background:linear-gradient(90deg,#81b5f8,#123c69)}.gapnote{padding:12px 14px;border-left:5px solid var(--warn);background:#fffaf0;border-radius:10px;margin:8px 0;font-size:13px}.assume{padding:10px 14px;border:1px solid var(--line);border-radius:10px;margin:8px 0;font-size:13px}.assume b{color:var(--brand)}@media(max-width:1100px){.grid.kpi,.two,.three,.dropgrid{grid-template-columns:1fr}.wrap{padding:16px}.kpi-value{font-size:24px}.barrow{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-
-<header class="topbar">
-  <div class="brand">
-    <div class="brand-mark">CF</div>
+<header>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
     <div>
-      <h1>Dashboard Logístico · Carrefour</h1>
-      <span id="lastUpdated">cargando datos…</span>
+      <h1>Dashboard Logístico Carrefour</h1>
+      <p>Quiebres, oportunidades y última compra/entrega de los productos Molinos en Carrefour — datos actualizados automáticamente. <span id="autoStatus" style="font-weight:700">Cargando…</span></p>
     </div>
-  </div>
-  <div class="top-actions">
-    <div class="pill stale" id="statusPill" title="Click para ver el detalle"><span class="dot"></span><span id="statusText">Sin datos</span></div>
-    <button class="ghost" id="refreshBtn">↻ Refrescar</button>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn secondary" id="refreshAutoBtn" style="padding:8px 12px;font-size:13px">↻ Refrescar</button>
+    </div>
   </div>
 </header>
-
-<div class="diag-panel" id="diagPanel">
-  <div class="diag-head">
-    <strong>Diagnóstico de carga</strong>
-    <button class="ghost" id="diagClose">Cerrar</button>
+<div id="diagPanel" style="display:none;background:#2a1a1a;border-bottom:1px solid #5c2b2b;padding:10px 32px;font-size:12.5px;color:#ffd8d8"></div>
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab locked" data-tab="upload" id="tabUpload" style="display:none">1. Cargar archivos (admin)</button>
+    <button class="tab locked" data-tab="dash">2. Dashboard</button>
+    <button class="tab locked" data-tab="articulos">3. Artículos críticos</button>
+    <button class="tab locked" data-tab="oportunidades">4. Oportunidades</button>
+    <button class="tab locked" data-tab="compras">5. Compras y entregas</button>
+    <button class="tab locked" data-tab="insights">6. Insights</button>
+    <button class="tab locked" data-tab="bodega">7. Dashboard Bodega</button>
+    <button class="tab locked" data-tab="oportbodega">8. Oportunidades Bodega</button>
+    <button class="tab locked" data-tab="oportsnacks">9. Oportunidades Snacks</button>
+    <button class="tab locked" data-tab="scrdtab">10. SCRD</button>
+    <button class="tab" data-tab="notas">11. Notas del modelo</button>
   </div>
-  <div id="diagBody"></div>
+  <section id="upload" class="section active"><div class="card"><h2>Cargando datos</h2><p class="muted" id="autoLoadMsg">Descargando SCRD, Gestión de Pedidos y Parámetros desde las fuentes configuradas…</p>
+    <div style="max-width:520px"><div id="statusScore" class="status muted">Sin SCRD cargado.</div><div id="statusAFO" class="status muted" style="margin-top:8px">Sin Gestión de Pedidos cargada.</div><div id="statusParam" class="status muted" style="margin-top:8px">Sin Parámetros cargados.</div></div>
+    <div id="manualUploadBox" style="display:none;margin-top:22px;border-top:1px solid var(--line);padding-top:18px">
+    <h3 style="margin:0 0 10px">Carga manual (admin)</h3>
+    <p class="muted">Primero cargá el <b>SCRD</b> (hojas <b>consolidado</b>, <b>Maestro Producto</b>, <b>Maestro Tiendas</b> opcional, <b>Base</b> y <b>Venta Media</b>). Después cargá la <b>Gestión de Pedidos</b> (hojas <b>Pedidos</b>, <b>Viajes-entregas</b> y <b>Bocas</b>). Opcionalmente, cargá también el archivo de <b>Parámetros</b>.</p>
+    <div class="dropgrid" style="grid-template-columns:1fr 1fr 1fr">
+      <div id="dropScore" class="drop"><h3>1) SCRD Carrefour</h3><input type="file" id="fileScore" accept=".xlsx,.xlsm,.xls"></div>
+      <div id="dropAFO" class="drop"><h3>2) Gestión de Pedidos</h3><input type="file" id="fileAFO" accept=".xlsx,.xlsm,.xls"></div>
+      <div id="dropParam" class="drop"><h3>3) Parámetros</h3><input type="file" id="fileParam" accept=".xlsb,.xlsx,.xlsm,.xls"></div>
+    </div>
+    </div>
+  </div></section>
+  <section id="dash" class="section"><div class="filters card"><div class="field"><label>MRP</label><select id="fMRP"><option value="__all">Todos</option></select></div><div class="field"><label>Gran Negocio</label><select id="fGN"><option value="__all">Todos</option></select></div><div class="field"><label>Vigencia</label><select id="fVig"><option value="__all">Todas</option></select></div><div class="field"><label>Rol Local</label><select id="fRol"><option value="__all">Todos</option></select></div><div class="field"><label>Forma Entrega</label><select id="fForma"><option value="__all">Todas</option></select></div><div class="field"><label>Área</label><select id="fArea"><option value="__all">Todas</option></select></div><div class="field"><label>EAN</label><input id="fEAN" placeholder="Buscar EAN"></div><div class="field"><label>SKU</label><input id="fSKU" placeholder="Buscar SKU"></div><div class="field"><label>Supervisor</label><select id="fSup"><option value="__all">Todos</option></select></div><div class="field"><label>N° tienda</label><input id="fTiendaNum" placeholder="Buscar N° tienda"></div><div class="field"><label>Boca Fiori</label><input id="fBocaFiori" placeholder="Buscar Boca Fiori"></div><div class="field"><label>Estado SKU (Venta Media)</label><select id="fEstadoSku"><option value="__all">Todos</option><option value="Activo">Activo</option><option value="Inactivo">Inactivo</option></select></div><div class="field"><label>Pendiente</label><select id="fPendiente"><option value="__all">Todos</option><option value="Sí">Sí</option><option value="No">No</option></select></div><button class="btn secondary" onclick="resetFilters()">Limpiar filtros</button><span class="pill" id="rowsPill">0 filas</span></div><div class="grid kpi"><div class="card"><div class="kpi-title">Quiebre total</div><div id="kQuiebre" class="kpi-value">-</div></div><div class="card"><div class="kpi-title">Quiebre</div><div id="kDisp" class="kpi-value">-</div></div><div class="card"><div class="kpi-title">Oportunidades</div><div id="kOpp" class="kpi-value">-</div></div><div class="card"><div class="kpi-title">EANs quebrados</div><div id="kEAN" class="kpi-value">-</div></div><div class="card"><div class="kpi-title">Locales quebrados</div><div id="kLocales" class="kpi-value">-</div></div><div class="card"><div class="kpi-title">Área crítica</div><div id="kArea" class="kpi-value">-</div></div></div><div class="grid two" style="margin-top:16px"><div class="card"><h3>Quiebre por área</h3><div id="chartArea"></div><div style="height:18px"></div><h3>Quiebre por área (vista 2)</h3><div id="chartDisponibilidad"></div></div><div class="card"><h3>Top artículos por % de quiebre</h3><div id="chartTop"></div></div></div><div class="card" style="margin-top:16px"><h3>Top artículos por % de quiebre con apertura por área</h3><p class="muted">Muestra la criticidad por combinación artículo + área. Si cargaste la Gestión de Pedidos, también informa la última compra y última entrega de esa misma área.</p><div class="tablebox" style="max-height:420px"><table id="tblTopAreaDash"></table></div></div></section>
+  <section id="articulos" class="section"><div class="card"><h2>Artículos más quebrados</h2><div class="tablebox"><table id="tblArt"></table></div></div></section>
+  <section id="oportunidades" class="section"><div class="card"><h2>Oportunidades CD → Boca</h2><p class="muted">Para cada Tienda + EAN con quiebre: se identifica el CD que abastece a esa tienda (hoja <b>Dist</b> del archivo Parámetros) y se verifica si ese CD puntual tiene stock disponible del EAN (hoja <b>Stk Centros</b>). Si ambas condiciones se cumplen, se genera una oportunidad de reposición de 1 bulto. No se considera el campo Pendiente para esta validación. Respeta el resto de los filtros activos (EAN, SKU, etc.).</p><div id="oppWarn" class="status warn"></div><button id="btnDownload" class="btn" disabled onclick="downloadOpps()">Descargar Excel (CD, Tienda, EAN, UxB, Bultos)</button><div style="height:14px"></div><div class="tablebox"><table id="tblOpp"></table></div></div></section>
+  <section id="compras" class="section"><div class="card"><h2>Última compra y última entrega por artículo y región</h2><p class="muted">Cruza el SCRD con la Gestión de Pedidos. Región = Reg Geográfica de la tienda (Maestro Tiendas), vinculada por Destinatario mcía. → Boca Fiori. Se vincula por SKU.</p><button id="btnDownloadCE" class="btn" disabled onclick="downloadComprasEntregas()">Descargar Excel</button><div id="afoWarn" class="status warn"></div><div style="height:14px"></div><div class="tablebox"><table id="tblCompras"></table></div></div></section>
+  <section id="insights" class="section"><div class="card"><h2>Insights automáticos</h2><div id="insightBox"></div></div></section>
+  <section id="bodega" class="section"><div class="filters card">
+    <div class="field"><label>Supervisor</label><select id="fBSup"><option value="__all">Todos</option></select></div>
+    <div class="field"><label>Zona</label><select id="fBZona"><option value="__all">Todas</option></select></div>
+    <div class="field"><label>Boca</label><select id="fBBoca"><option value="__all">Todas</option></select></div>
+    <div class="field"><label>N° tienda</label><input id="fBTiendaNum" placeholder="Buscar N° tienda"></div>
+    <div class="field"><label>Boca Fiori</label><input id="fBBocaFiori" placeholder="Buscar Boca Fiori"></div>
+    <div class="field"><label>EAN</label><input id="fBEAN" placeholder="Buscar EAN"></div>
+    <div class="field"><label>Familia</label><select id="fBFamilia"><option value="__all">Todas</option></select></div>
+    <button class="btn secondary" onclick="resetBodegaFilters()">Limpiar filtros</button>
+    <span class="pill" id="rowsPillB">0 filas</span>
+  </div>
+  <div class="grid kpi">
+    <div class="card"><div class="kpi-title">Tiendas con quiebres</div><div id="kBTiendas" class="kpi-value">-</div></div>
+    <div class="card"><div class="kpi-title">% tiendas quebradas</div><div id="kBPct" class="kpi-value">-</div></div>
+    <div class="card"><div class="kpi-title">SKUs quebrados total</div><div id="kBSkus" class="kpi-value">-</div></div>
+    <div class="card"><div class="kpi-title">Supervisor crítico</div><div id="kBSupCrit" class="kpi-value" style="font-size:16px">-</div></div>
+    <div class="card"><div class="kpi-title">Zona crítica</div><div id="kBZonaCrit" class="kpi-value" style="font-size:16px">-</div></div>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h3>Quiebres por tienda (Bodega)</h3><div id="chartBTienda"></div></div>
+    <div class="card"><h3>% de quiebre por tienda (Bodega)</h3><div id="chartBPct"></div></div>
+  </div>
+  </section>
+  <section id="oportbodega" class="section"><div class="card"><h2>Oportunidades de distribución — Bodega (CD → Tiendas)</h2><p class="muted">Mismo criterio que la pestaña "4. Oportunidades", acotado a Gran Negocio = Bodega: para cada Tienda + EAN de Bodega con quiebre, se identifica el CD asignado (Parámetros·Dist) y se valida que ese CD tenga stock disponible (Parámetros·Stk Centros). No se considera el campo Pendiente.</p><div id="obWarn" class="status warn"></div><div style="display:flex;gap:10px;align-items:center;margin-bottom:14px"><input class="tsearch" id="fOBSearch" placeholder="Buscar EAN, descripción, tienda, supervisor..." style="min-width:260px;padding:10px 12px;border:1px solid var(--line);border-radius:10px" oninput="renderOportBodega()"><button class="btn" onclick="downloadOportBodega()">Descargar Excel (CD, Tienda, EAN, UxB, Bultos)</button><span class="pill" id="rowsPillOB">0 filas</span></div><div class="tablebox"><table id="tblOportBodega"></table></div></div></section>
+  <section id="oportsnacks" class="section">
+    <div class="filters card">
+      <div class="field"><label>Supervisor</label><select id="fSnSup"><option value="__all">Todos</option></select></div>
+      <div class="field"><label>Zona</label><select id="fSnZona"><option value="__all">Todas</option></select></div>
+      <div class="field"><label>Boca</label><select id="fSnBoca"><option value="__all">Todas</option></select></div>
+      <div class="field"><label>N° tienda</label><input id="fSnTiendaNum" placeholder="Buscar N° tienda"></div>
+      <div class="field"><label>Boca Fiori</label><input id="fSnBocaFiori" placeholder="Buscar Boca Fiori"></div>
+      <div class="field"><label>EAN</label><input id="fSnEAN" placeholder="Buscar EAN"></div>
+      <div class="field"><label>Familia</label><select id="fSnFamilia"><option value="__all">Todas</option></select></div>
+      <div class="field"><label>Marca</label><select id="fSnMarca"><option value="__all">Todas</option></select></div>
+      <button class="btn secondary" onclick="resetSnacksFilters()">Limpiar filtros</button>
+      <span class="pill" id="rowsPillSn">0 filas</span>
+    </div>
+    <div class="grid kpi">
+      <div class="card"><div class="kpi-title">Cantidad de oportunidades</div><div id="kSnOpp" class="kpi-value">-</div></div>
+      <div class="card"><div class="kpi-title">Tiendas con oportunidades</div><div id="kSnTiendas" class="kpi-value">-</div></div>
+      <div class="card"><div class="kpi-title">SKUs con oportunidad</div><div id="kSnSkus" class="kpi-value">-</div></div>
+      <div class="card"><div class="kpi-title">Supervisor con más oportunidades</div><div id="kSnSupCrit" class="kpi-value" style="font-size:16px">-</div></div>
+      <div class="card"><div class="kpi-title">Zona con más oportunidades</div><div id="kSnZonaCrit" class="kpi-value" style="font-size:16px">-</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>Oportunidades de distribución — Snacks (CD → Tiendas)</h2>
+      <p class="muted">Misma metodología y criterios que "8. Oportunidades Bodega" (quiebre en la tienda + CD asignado con stock disponible según Parámetros·Dist y Stk Centros, sin considerar Pendiente), acotada a Gran Negocio = Snacks. Ordenada por mayor venta media y luego por mayor stock disponible en el CD (mayor impacto potencial de distribución).</p>
+      <div id="snWarn" class="status warn"></div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px"><input class="tsearch" id="fSnSearch" placeholder="Buscar EAN, descripción, tienda, supervisor..." style="min-width:260px;padding:10px 12px;border:1px solid var(--line);border-radius:10px" oninput="renderOportSnacks()"><button class="btn" onclick="downloadOportSnacks()">Descargar Excel (CD, Tienda, EAN, UxB, Bultos)</button><span class="pill" id="rowsPillSnT">0 filas</span></div>
+      <div class="tablebox"><table id="tblOportSnacks"></table></div>
+    </div>
+  </section>
+  <section id="scrdtab" class="section">
+    <div class="filters card">
+      <div class="field"><label>Familia</label><select id="fScrdFamilia"><option value="__all">Todas</option></select></div>
+      <div class="field"><label>Gran Negocio</label><select id="fScrdGN"><option value="__all">Todos</option></select></div>
+      <div class="field"><label>EAN</label><input id="fScrdEAN" placeholder="Buscar EAN"></div>
+      <div class="field"><label>Supervisor</label><select id="fScrdSup"><option value="__all">Todos</option></select></div>
+      <div class="field"><label>Boca Fiori</label><input id="fScrdBocaFiori" placeholder="Buscar Boca Fiori"></div>
+      <div class="field"><label>N° tienda</label><input id="fScrdTiendaNum" placeholder="Buscar N° tienda"></div>
+      <button class="btn secondary" onclick="resetScrdFilters()">Limpiar filtros</button>
+      <span class="pill" id="rowsPillScrd">0 filas</span>
+    </div>
+    <div class="gapnote" id="scrdMissingNote" style="margin-bottom:16px"></div>
+    <div class="card"><h2>Resumen SCRD — por MRP y Familia</h2>
+      <p class="muted">Agrupado igual que tu pivot de Parámetros: MRP (Alimentos/Bodega/R&C/Snacks) → Familia, con fila de Total por MRP y Total general. Los filtros de arriba se aplican antes de armar el resumen.</p>
+      <div class="tablebox"><table id="tblScrd"></table></div>
+    </div>
+  </section>
+  <section id="notas" class="section"><div class="card"><h2>Notas del modelo — mapeo, supuestos y datos faltantes</h2>
+    <p class="muted">El modelo de datos (el array <code>data</code> con un registro por combinación Tienda×EAN, y el objeto <code>afo</code> con última compra/entrega) es idéntico en estructura al dashboard original de Cencosud. Los gráficos, KPIs, tablas y filtros son exactamente las mismas fórmulas/medidas del original — lo único que cambió es cómo se llenan esos campos a partir de SCRD y Gestión de Pedidos. Reemplazar los archivos por su versión del día siguiente y volver a cargarlos (Refresh) actualiza todo automáticamente, sin tocar ninguna fórmula.</p>
+    <h3 style="margin-top:22px">Mapeo de campos (original → nuevo)</h3>
+    <div class="tablebox" style="max-height:340px"><table><thead><tr><th>Campo del modelo</th><th>Origen Cencosud</th><th>Origen Carrefour (SCRD / Gestión de Pedidos)</th><th>Confianza</th></tr></thead><tbody>
+      <tr><td>local (Tienda)</td><td>Scorecard·Base, col. Local</td><td>SCRD·consolidado ( Tienda) = SCRD·Maestro Tiendas (N° Tienda)</td><td>Alta — directo</td></tr>
+      <tr><td>área</td><td>Región calculada desde Destinatario</td><td>SCRD·Maestro Tiendas → Reg Geográfica</td><td>Media-alta — supuesto: se usó Reg Geográfica como "Área"; podría ser Zona Geográfica o Formato en su lugar</td></tr>
+      <tr><td>ean</td><td>Scorecard·Base, col. EAN</td><td>SCRD·consolidado.Ean</td><td>Alta — directo</td></tr>
+      <tr><td>sku / cod</td><td>Scorecard·Base, cols. SKU y Código interno</td><td>SCRD·Maestro Producto.SKU (mismo valor para ambos campos)</td><td>Media — supuesto: no existe un "código interno" separado del SKU en los archivos de Carrefour</td></tr>
+      <tr><td>desc</td><td>Scorecard·Base, col. Descripción</td><td>SCRD·Maestro Producto.Descripcion</td><td>Alta — directo</td></tr>
+      <tr><td>formaEntrega</td><td>Scorecard·Base, col. Forma Entrega</td><td>SCRD·Maestro Tiendas → Entrega directa</td><td>Media — supuesto razonable (valores: Boca x boca / Interior)</td></tr>
+      <tr><td>vigencia</td><td>Scorecard·Base, col. Vigencia (vigencia del artículo en la tienda)</td><td>SCRD·Maestro Tiendas → Status (S/N, estado de la tienda)</td><td><b>Baja — hueco real</b>: no hay un indicador de vigencia del artículo por tienda; se usó el status de la tienda como aproximación</td></tr>
+      <tr><td>rolLocal</td><td>Scorecard·Base, col. Rol Local</td><td>SCRD·Maestro Tiendas → Cluster</td><td>Media-alta</td></tr>
+      <tr><td>quiebre / quebrado</td><td>Scorecard·Base, col. Quiebre</td><td>SCRD·consolidado.Quiebres</td><td>Alta — directo</td></tr>
+      <tr><td>stockBoca</td><td>Scorecard·Base, col. Stock boca</td><td>SCRD·consolidado.Stock</td><td>Alta — el nombre de columna es genérico ("Stock"), se asumió que es stock a nivel tienda por la granularidad Ean+Tienda de la hoja</td></tr>
+      <tr><td>stockCD</td><td>Scorecard·Base, col. Stock CD (por tienda/región)</td><td>SCRD·Base → Stock CD uni (a nivel EAN, toda la cuenta)</td><td><b>Baja — hueco real</b>, ver abajo</td></tr>
+      <tr><td>mrp</td><td>Detectado por nombre de columna en Scorecard</td><td>SCRD·Maestro Producto.MRP</td><td>Alta — directo</td></tr>
+      <tr><td>gn (Gran Negocio)</td><td>Detectado por nombre de columna en Scorecard</td><td>SCRD·Maestro Producto."Gran Negocio"</td><td>Alta — directo</td></tr>
+      <tr><td>Última compra / OC</td><td>AFO·Pedidos (Fecha del documento, Referencia/Pedido cliente, Destinatario, Material)</td><td>Gestión de Pedidos·Pedidos (mismos campos, misma estructura)</td><td>Alta — directo, mismo layout de columnas</td></tr>
+      <tr><td>Última entrega</td><td>AFO·Viajes-entregas (Destinatario, Fecha de entrega, Material)</td><td>Gestión de Pedidos·Viajes-entregas (mismos campos, posición de columnas distinta, se detecta por encabezado)</td><td>Alta</td></tr>
+      <tr><td>Destinatario → Área (clave de cruce compras/entregas)</td><td>Tabla fija de 4 códigos SAP → región</td><td>Destinatario mcía. → SCRD·Maestro Tiendas."Boca Fiori" → N° Tienda → Reg Geográfica</td><td>Alta — validado: ~90% de las filas de Pedidos y ~65% de Viajes-entregas cruzan correctamente contra el maestro de tiendas</td></tr>
+      <tr><td>supervisor</td><td>—</td><td>Gestión de Pedidos·Bocas.Supervisor (por N° Tienda). Si esa hoja no está, se usa SCRD·Maestro Tiendas.Supervisor como respaldo</td><td>Alta — directo. Bocas siempre tiene la última palabra si está presente</td></tr>
+      <tr><td>bocaFiori</td><td>—</td><td>SCRD·Maestro Tiendas."Boca Fiori"</td><td>Alta — directo</td></tr>
+      <tr><td>familia</td><td>—</td><td>SCRD·Maestro Producto.Familia</td><td>Alta — directo</td></tr>
+      <tr><td>marca</td><td>—</td><td>SCRD·Maestro Producto.Marca</td><td>Alta — directo. Usado en el filtro y la tabla de Oportunidades Snacks</td></tr>
+      <tr><td>ee (ya no se usa para Oportunidades Bodega)</td><td>—</td><td>SCRD·Base, columna P ("EE"). Se mantiene en el modelo como dato de referencia, pero desde esta versión la pestaña Oportunidades Bodega usa el mismo criterio real de CD que la pestaña 4 (Dist + Stk Centros), no el valor de EE</td><td>Alta — directo, a nivel EAN (cuenta completa, no por tienda)</td></tr>
+      <tr><td>estadoSku (Activo/Inactivo)</td><td>—</td><td>SCRD·Venta Media (una fila por EAN, una columna por Tienda): Activo si la celda Tienda×EAN tiene cualquier valor numérico (incluido 0), Inactivo si está vacía</td><td>Alta — directo, calculado por combinación Tienda+EAN</td></tr>
+      <tr><td>minimo (Mínimo configurado)</td><td>—</td><td>Parámetros·Min Tdas (misma estructura que Venta Media: una fila por EAN, una columna por Tienda)</td><td>Alta — directo por Tienda+EAN. Archivo opcional (.xlsb)</td></tr>
+      <tr><td>pendiente (Sí/No)</td><td>—</td><td>Parámetros·Pend Tdas: "Sí" si el valor de la celda Tienda×EAN es mayor a 0, "No" si es 0, "Sin dato" si está vacía</td><td>Alta — directo por Tienda+EAN. Archivo opcional (.xlsb)</td></tr>
+      <tr><td>cdAsignado (CD abastecedor)</td><td>Stock CD aproximado a nivel cuenta (hoja Base)</td><td>Parámetros·Dist: CD asignado a esa Tienda para ese EAN (mismo formato Tienda×EAN; valor "NP" o vacío = sin CD asignado)</td><td>Alta — directo por Tienda+EAN. Reemplaza la aproximación anterior. Archivo opcional (.xlsb)</td></tr>
+      <tr><td>stockCDReal (stock del CD asignado)</td><td>—</td><td>Parámetros·Stk Centros, columnas "Stk CD … &lt;n° CD&gt;": stock del CD puntual que aparece en cdAsignado</td><td>Alta — directo por CD+EAN. Es el que ahora usa la pestaña Oportunidades (ya no el Stock CD aproximado de la hoja Base)</td></tr>
+      <tr><td>uxb (Unidades por bulto)</td><td>—</td><td>SCRD·Maestro Producto.UxB</td><td>Alta — directo por EAN</td></tr>
+    </tbody></table></div>
+    <h3 style="margin-top:22px">Datos faltantes — qué falta y en qué archivo debería estar</h3>
+    <div class="gapnote"><b>Stock CD por tienda/región — resuelto.</b> Esto estaba señalado como el hueco principal cuando solo teníamos SCRD y Gestión de Pedidos (el "Stock CD uni" de la hoja Base es un valor único por EAN para toda la cuenta, no por CD). Con el archivo de <b>Parámetros</b> (hojas <b>Dist</b> y <b>Stk Centros</b>) esto ya se resolvió: Dist indica el CD real que abastece a cada Tienda por EAN, y Stk Centros trae el stock disponible de cada CD por EAN. La pestaña Oportunidades usa estos dos datos en conjunto (ya no la aproximación de la hoja Base). El "Stock CD uni" de Base se mantiene solo como referencia histórica en el modelo, pero no interviene en el cálculo de oportunidades.</div>
+    <div class="gapnote"><b>CDs sin columna de stock en Stk Centros.</b> Algunos CDs que aparecen en Dist no tienen una columna "Stk CD …" correspondiente en Stk Centros (por ejemplo el CD 951, que es un circuito Cross-Dock / XD y no mantiene stock propio). En esos casos la tienda no genera oportunidad aunque tenga quiebre, porque no hay stock desagregado de ese CD para redistribuir — es una limitación de los datos, no un error de cálculo.</div>
+    <div class="gapnote"><b>Vigencia del artículo por tienda.</b> No hay, en ninguno de los dos archivos, un campo que indique si un SKU está "vigente" (activo/listado) en una tienda puntual. Se usó el status general de la tienda (Maestro Tiendas·Status, S/N) como aproximación, que en realidad describe si la tienda está operativa, no si ese artículo puntual está listado ahí. Para reproducir fielmente este indicador haría falta un maestro de "surtido vigente por tienda" (listado SKU × Tienda con fecha de alta/baja de vigencia).</div>
+    <div class="gapnote"><b>Código interno distinto del SKU.</b> El dashboard original distinguía "Código interno" de "SKU" como dos campos separados. En Carrefour sólo existe SKU como identificador; se usó el mismo valor para ambos campos. Si existe un código interno propio de Molinos para estos productos que no sea el SKU de Maestro Producto, indicámelo y de qué archivo/columna sacarlo.</div>
+    <h3 style="margin-top:22px">Cómo actualizar el dashboard cada día</h3>
+    <div class="assume">1) Reemplazar el SCRD por la versión nueva (mismas hojas: consolidado, Maestro Producto, Maestro Tiendas, Base). 2) Reemplazar la Gestión de Pedidos por la versión nueva (mismas hojas: Pedidos, Viajes-entregas). 3) Volver a cargar ambos archivos en la pestaña "Cargar archivos" (arrastrar y soltar, o seleccionar el archivo). No hace falta tocar ninguna fórmula, gráfico ni columna: todo se recalcula solo, siempre que los nombres de las hojas y de los encabezados de columna no cambien.</div>
+  </section>
 </div>
-
-<main>
-
-  <div class="filters">
-    <div class="field">
-      <label for="fTienda">Tienda</label>
-      <select id="fTienda"><option value="">Todas</option></select>
-    </div>
-    <div class="field">
-      <label for="fFormato">Formato</label>
-      <select id="fFormato"><option value="">Todos</option></select>
-    </div>
-    <div class="field">
-      <label for="fSupervisor">Supervisor</label>
-      <select id="fSupervisor"><option value="">Todos</option></select>
-    </div>
-    <div class="field">
-      <label for="fFamilia">Familia / Negocio</label>
-      <select id="fFamilia"><option value="">Todas</option></select>
-    </div>
-    <div class="field grow">
-      <label for="fSku">Buscar SKU / EAN / Descripción</label>
-      <input type="text" id="fSku" placeholder="Ej: 62182 o fideos...">
-    </div>
-    <button class="ghost clear-btn" id="clearFilters">Limpiar filtros</button>
-  </div>
-
-  <div class="kpi-grid">
-    <div class="kpi" id="kpiQuiebres">
-      <div class="label">Quiebres</div>
-      <div class="value">—</div>
-      <div class="sub">% combinaciones Tienda×SKU en quiebre</div>
-      <div class="bar"><i style="width:0%"></i></div>
-    </div>
-    <div class="kpi" id="kpiFillRate">
-      <div class="label">Fill Rate (DF)</div>
-      <div class="value">—</div>
-      <div class="sub">Promedio ponderado por formato</div>
-      <div class="bar"><i style="width:0%"></i></div>
-    </div>
-    <div class="kpi" id="kpiDOH">
-      <div class="label">DOH promedio</div>
-      <div class="value">—</div>
-      <div class="sub">Days on hand · nivel nacional por SKU</div>
-      <div class="bar"><i style="width:0%"></i></div>
-    </div>
-    <div class="kpi" id="kpiPedidos">
-      <div class="label">Cumplimiento Pedidos→Entregas</div>
-      <div class="value">—</div>
-      <div class="sub">Cajas entregadas / cajas pedidas</div>
-      <div class="bar"><i style="width:0%"></i></div>
-    </div>
-    <div class="kpi na" id="kpiDevoluciones">
-      <div class="label">Devoluciones</div>
-      <div class="value">Sin fuente</div>
-      <div class="sub">Todavía no hay un archivo de devoluciones conectado</div>
-    </div>
-  </div>
-
-  <div class="grid-2">
-    <div class="card">
-      <h3>Quiebres por Cluster / Formato<small>% de combinaciones Tienda×SKU con Quiebres=1, filtro aplicado</small></h3>
-      <div class="chart-wrap"><canvas id="chartQuiebres"></canvas></div>
-    </div>
-    <div class="card">
-      <h3>Pedidos vs. Entregas por semana<small>Cajas pedidas vs. cajas entregadas (Umg), últimas semanas disponibles</small></h3>
-      <div class="chart-wrap"><canvas id="chartPedidos"></canvas></div>
-    </div>
-  </div>
-
-  <div class="grid-2">
-    <div class="card">
-      <h3>Top 15 SKUs con más quiebres<small>Sobre el universo filtrado actual</small></h3>
-      <div class="table-scroll">
-        <table>
-          <thead><tr><th>EAN</th><th>Descripción</th><th>Familia</th><th class="num">Quiebres</th><th class="num">Tiendas</th><th class="num">% quiebre</th></tr></thead>
-          <tbody id="tblTopQuiebres"><tr><td colspan="6" class="empty-note">Cargando…</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-    <div class="card">
-      <h3>Cumplimiento por Supervisor<small>Cajas pedidas vs. entregadas, últimos datos disponibles</small></h3>
-      <div class="table-scroll">
-        <table>
-          <thead><tr><th>Supervisor</th><th class="num">Pedido</th><th class="num">Entregado</th><th class="num">%</th></tr></thead>
-          <tbody id="tblSupervisor"><tr><td colspan="4" class="empty-note">Cargando…</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <footer>Fuente: SCRD Carrefour · Gestión de Pedidos · Parámetros — actualización automática desde Google Sheets publicados</footer>
-</main>
-
-<div id="adminGear" title="Modo administrador">⚙</div>
-
-<div class="modal-backdrop" id="adminModal">
-  <div class="modal">
+<div id="adminGear" title="Modo administrador" style="position:fixed;bottom:18px;right:18px;width:40px;height:40px;border-radius:50%;background:#123c69;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;z-index:60;box-shadow:0 4px 14px rgba(16,24,40,.25)">⚙</div>
+<div id="adminModal" style="display:none;position:fixed;inset:0;background:rgba(15,20,30,.6);z-index:70;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;width:min(560px,92vw);max-height:86vh;overflow:auto;padding:22px">
     <div id="loginBody">
-      <h2>Modo administrador</h2>
-      <p class="hint">Ingresá la contraseña para editar las fuentes de datos. El resto de las visitas nunca ve esta pantalla.</p>
-      <div class="row">
-        <label for="adminPass">Contraseña</label>
-        <input type="password" id="adminPass" autocomplete="off">
-      </div>
-      <p class="err-text" id="loginErr">Contraseña incorrecta.</p>
-      <div class="modal-actions">
-        <button class="ghost" id="cancelLogin">Cancelar</button>
-        <button class="primary" id="submitLogin">Entrar</button>
+      <h2 style="margin:0 0 4px">Modo administrador</h2>
+      <p class="muted" style="margin:0 0 16px">Ingresá la contraseña para editar las fuentes de datos o cargar archivos a mano. El resto de las visitas nunca ve esta pantalla.</p>
+      <div class="field" style="margin-bottom:12px"><label>Contraseña</label><input type="password" id="adminPass" style="width:100%"></div>
+      <p id="loginErr" style="display:none;color:var(--bad);font-size:13px">Contraseña incorrecta.</p>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:10px">
+        <button class="btn secondary" id="cancelLogin">Cancelar</button>
+        <button class="btn" id="submitLogin">Entrar</button>
       </div>
     </div>
-    <div id="adminBody" class="admin-panel-body">
-      <h2>Fuentes de datos</h2>
-      <p class="hint">Estos links se guardan solo en este navegador. Si republicás una hoja y cambia el gid, actualizalo acá.</p>
-      <div id="srcRows"></div>
-      <div class="modal-actions">
-        <button class="ghost" id="closeAdmin">Cerrar</button>
-        <button class="primary" id="saveSrc">Guardar y refrescar</button>
+    <div id="adminBody" style="display:none">
+      <h2 style="margin:0 0 4px">Fuentes de datos</h2>
+      <p class="muted" style="margin:0 0 16px">Links de Google Sheets publicados como workbook completo (<code>pub?output=xlsx</code>). Se guardan solo en este navegador.</p>
+      <div class="field" style="margin-bottom:10px"><label>SCRD Carrefour</label><input type="text" id="srcScrd" style="width:100%"></div>
+      <div class="field" style="margin-bottom:10px"><label>Gestión de Pedidos</label><input type="text" id="srcGP" style="width:100%"></div>
+      <div class="field" style="margin-bottom:10px"><label>Parámetros (opcional)</label><input type="text" id="srcParam" style="width:100%"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px">
+        <button class="btn secondary" id="showUploadTab">Cargar archivos a mano</button>
+        <div style="display:flex;gap:10px">
+          <button class="btn secondary" id="closeAdmin">Cerrar</button>
+          <button class="btn" id="saveSrc">Guardar y refrescar</button>
+        </div>
       </div>
     </div>
   </div>
 </div>
-
 <script>
-/* ==========================================================================
-   CONFIG — links de Google Sheets publicados como CSV.
-   Editables desde el panel de admin (⚙, contraseña) y persistidos en
-   localStorage — no requieren tocar este archivo para actualizarse.
-   ========================================================================== */
-const DEFAULT_SOURCES = {
-  consolidado:      "https://docs.google.com/spreadsheets/d/e/2PACX-1vTiMewjGXRQVZBeQii7RoHVsDv7lGnsfJQU_zt8kJwzdW7EGFZV_caX2PbZiCLtXw/pub?gid=2097803032&single=true&output=csv",
-  maestroProducto:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vTiMewjGXRQVZBeQii7RoHVsDv7lGnsfJQU_zt8kJwzdW7EGFZV_caX2PbZiCLtXw/pub?gid=626216613&single=true&output=csv",
-  base:             "https://docs.google.com/spreadsheets/d/e/2PACX-1vTiMewjGXRQVZBeQii7RoHVsDv7lGnsfJQU_zt8kJwzdW7EGFZV_caX2PbZiCLtXw/pub?gid=1028284235&single=true&output=csv",
-  ventaMedia:       "https://docs.google.com/spreadsheets/d/e/2PACX-1vTiMewjGXRQVZBeQii7RoHVsDv7lGnsfJQU_zt8kJwzdW7EGFZV_caX2PbZiCLtXw/pub?gid=70406382&single=true&output=csv",
-  quiebresPivot:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vTiMewjGXRQVZBeQii7RoHVsDv7lGnsfJQU_zt8kJwzdW7EGFZV_caX2PbZiCLtXw/pub?gid=1137881904&single=true&output=csv",
-  pedidos:          "https://docs.google.com/spreadsheets/d/e/2PACX-1vTcf45cGLEnK6GhRaEkd9y9VedIaAWO-anVD7xPi_NgKxEnOfbhYFMZX0y6wEYRSg/pub?output=csv",
-  viajesEntregas:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTcf45cGLEnK6GhRaEkd9y9VedIaAWO-anVD7xPi_NgKxEnOfbhYFMZX0y6wEYRSg/pub?gid=562157111&single=true&output=csv",
-  bocas:            "https://docs.google.com/spreadsheets/d/e/2PACX-1vTcf45cGLEnK6GhRaEkd9y9VedIaAWO-anVD7xPi_NgKxEnOfbhYFMZX0y6wEYRSg/pub?gid=87143886&single=true&output=csv",
-  pendTiendas:      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRvtf-kgQW6gaQSTtaQRuC5MDpy4Jt4vsuOSyQcFeFB5F4dMDrYYRf-ZlgFKicQ8x3tBhL6OjuHFXML/pub?gid=630466972&single=true&output=csv",
-  minTiendas:       "https://docs.google.com/spreadsheets/d/e/2PACX-1vRvtf-kgQW6gaQSTtaQRuC5MDpy4Jt4vsuOSyQcFeFB5F4dMDrYYRf-ZlgFKicQ8x3tBhL6OjuHFXML/pub?gid=989925887&single=true&output=csv",
-  stockTiendas:     "https://docs.google.com/spreadsheets/d/e/2PACX-1vRvtf-kgQW6gaQSTtaQRuC5MDpy4Jt4vsuOSyQcFeFB5F4dMDrYYRf-ZlgFKicQ8x3tBhL6OjuHFXML/pub?gid=1728817942&single=true&output=csv"
+
+let data=[],filtered=[],afo={loaded:false,purchases:{},deliveries:{}};let loaded=false;
+let productByEan={}, storeByNum={}, bfToTienda={};
+let minByKey={}, pendByKey={}, pendQtyByKey={}, paramsLoaded=false;
+let distByKey={}, cdStockByEanCD={};
+const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+const invalidArea=a=>{const x=norm(a);return !x||x==='#n/a'||x==='n/a'||x==='na'||x==='sin dato'};
+const materialKey=x=>{
+  if(x==null||x==='')return '';
+  let s=String(x).trim();
+  if(/^\d+(\.0+)?$/.test(s))s=String(parseInt(s,10));
+  else {
+    const digits=s.replace(/[^0-9]/g,'');
+    if(digits)s=String(parseInt(digits,10));
+  }
+  return s==='NaN'?'':s;
 };
-const SRC_LABELS = {
-  consolidado:"SCRD · consolidado", maestroProducto:"SCRD · Maestro Producto", base:"SCRD · Base",
-  ventaMedia:"SCRD · Venta Media", quiebresPivot:"SCRD · Quiebres (pivot)",
-  pedidos:"Gestión Pedidos · Pedidos", viajesEntregas:"Gestión Pedidos · Viajes-entregas", bocas:"Gestión Pedidos · Bocas",
-  pendTiendas:"Parámetros · Pend Tdas", minTiendas:"Parámetros · Min Tdas", stockTiendas:"Parámetros · Stock Tiendas"
+const nval=v=>{if(v==null||v==='')return 0;let x=Number(String(v).replace(',','.').replace('%',''));return isNaN(x)?0:x};
+const isBreak=v=>nval(v)===1||nval(v)>0.5;const fmtPct=x=>isFinite(x)?(x*100).toFixed(2).replace('.',',')+'%':'-';const fmtNum=x=>Number(x||0).toLocaleString('es-AR');const esc=x=>String(x??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));const tick=()=>new Promise(r=>setTimeout(r,20));
+function setStatus(id,t,c='muted'){const e=document.getElementById(id);e.className='status '+c;e.textContent=t}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{if(!loaded&&b.dataset.tab!=='upload'&&b.dataset.tab!=='notas'){setStatus('statusScore','Primero cargá un SCRD válido.','err');document.querySelector('[data-tab="upload"]').click();return}document.querySelectorAll('.tab,.section').forEach(e=>e.classList.remove('active'));b.classList.add('active');document.getElementById(b.dataset.tab).classList.add('active')});
+function wireDrop(dropId,fileId,handler){const d=document.getElementById(dropId),f=document.getElementById(fileId);d.ondragover=e=>{e.preventDefault();d.classList.add('drag')};d.ondragleave=()=>d.classList.remove('drag');d.ondrop=e=>{e.preventDefault();d.classList.remove('drag');if(e.dataTransfer.files[0])handler(e.dataTransfer.files[0])};f.onchange=e=>{if(e.target.files[0])handler(e.target.files[0])}}
+wireDrop('dropScore','fileScore',loadSCRD);wireDrop('dropAFO','fileAFO',loadGestionPedidos);wireDrop('dropParam','fileParam',loadParametros);['fMRP','fGN','fVig','fRol','fForma','fArea','fSup','fEstadoSku','fPendiente'].forEach(id=>document.getElementById(id).onchange=applyFilters);['fEAN','fSKU','fTiendaNum','fBocaFiori'].forEach(id=>document.getElementById(id).oninput=applyFilters);
+['fBSup','fBZona','fBBoca','fBFamilia'].forEach(id=>document.getElementById(id).onchange=applyBodegaFilters);['fBTiendaNum','fBBocaFiori','fBEAN'].forEach(id=>document.getElementById(id).oninput=applyBodegaFilters);
+['fSnSup','fSnZona','fSnBoca','fSnFamilia','fSnMarca'].forEach(id=>document.getElementById(id).onchange=applySnacksFilters);['fSnTiendaNum','fSnBocaFiori','fSnEAN'].forEach(id=>document.getElementById(id).oninput=applySnacksFilters);
+['fScrdFamilia','fScrdGN','fScrdSup'].forEach(id=>document.getElementById(id).onchange=applyScrdFilters);['fScrdEAN','fScrdBocaFiori','fScrdTiendaNum'].forEach(id=>document.getElementById(id).oninput=applyScrdFilters);
+
+function colIndex(s){let n=0;for(let i=0;i<s.length;i++)n=n*26+s.charCodeAt(i)-64;return n-1}
+async function zipText(zip,name){if(!zip[name])throw new Error('Falta '+name+' dentro del Excel.');return new TextDecoder().decode(await zip[name]())}
+async function unzip(buf){const u8=new Uint8Array(buf),dv=new DataView(buf);let eocd=-1;for(let i=u8.length-22;i>=Math.max(0,u8.length-70000);i--){if(dv.getUint32(i,true)===0x06054b50){eocd=i;break}}if(eocd<0)throw new Error('No pude abrir el archivo XLSX.');const total=dv.getUint16(eocd+10,true),cdOffset=dv.getUint32(eocd+16,true),files={};let p=cdOffset;for(let i=0;i<total;i++){if(dv.getUint32(p,true)!==0x02014b50)break;const method=dv.getUint16(p+10,true),csize=dv.getUint32(p+20,true),nlen=dv.getUint16(p+28,true),elen=dv.getUint16(p+30,true),clen=dv.getUint16(p+32,true),loff=dv.getUint32(p+42,true);const name=new TextDecoder().decode(u8.slice(p+46,p+46+nlen));files[name]=async()=>{const nl=dv.getUint16(loff+26,true),el=dv.getUint16(loff+28,true),start=loff+30+nl+el,comp=u8.slice(start,start+csize);if(method===0)return comp;if(method!==8)throw new Error('Compresión no soportada en '+name);let ds;try{ds=new DecompressionStream('deflate-raw')}catch(e){ds=new DecompressionStream('deflate')}const stream=new Blob([comp]).stream().pipeThrough(ds);const ab=await new Response(stream).arrayBuffer();return new Uint8Array(ab)};p+=46+nlen+elen+clen}return files}
+async function readXlsxSheet(file,sheetNames){if(!('DecompressionStream'in window))throw new Error('Tu navegador no soporta lectura ZIP interna. Abrilo con Edge o Chrome actualizado.');const buf=await file.arrayBuffer();const zip=await unzip(buf);const names=Object.keys(zip);const wbName=names.find(n=>n.toLowerCase()==='xl/workbook.xml');if(!wbName)throw new Error('No parece ser un archivo XLSX válido.');const parser=new DOMParser();const wb=parser.parseFromString(await zipText(zip,wbName),'application/xml');const rels=parser.parseFromString(await zipText(zip,'xl/_rels/workbook.xml.rels'),'application/xml');const relMap={};[...rels.getElementsByTagName('Relationship')].forEach(r=>relMap[r.getAttribute('Id')]=r.getAttribute('Target'));let target=null,wanted=sheetNames.map(norm);[...wb.getElementsByTagName('sheet')].forEach(s=>{if(wanted.includes(norm(s.getAttribute('name')))){let id=s.getAttribute('r:id')||s.getAttribute('id');target=relMap[id]}});if(!target)throw new Error('No encontré la hoja: '+sheetNames.join(' / '));let sheetPath='xl/'+target.replace(/^\//,'').replace(/^xl\//,'');let sst=[];if(zip['xl/sharedStrings.xml']){const ss=parser.parseFromString(await zipText(zip,'xl/sharedStrings.xml'),'application/xml');sst=[...ss.getElementsByTagName('si')].map(si=>[...si.getElementsByTagName('t')].map(t=>t.textContent).join(''))}const sh=parser.parseFromString(await zipText(zip,sheetPath),'application/xml');const out=[];for(const row of [...sh.getElementsByTagName('row')]){const ri=(parseInt(row.getAttribute('r')||'1')-1);const arr=out[ri]||[];for(const c of [...row.getElementsByTagName('c')]){const ref=c.getAttribute('r')||'';const ci=colIndex(ref.replace(/\d/g,''));const type=c.getAttribute('t');let val='';const v=c.getElementsByTagName('v')[0];if(type==='s')val=sst[parseInt(v?.textContent||'0')]||'';else if(type==='inlineStr')val=[...c.getElementsByTagName('t')].map(t=>t.textContent).join('');else val=v?v.textContent:'';arr[ci]=val}out[ri]=arr}return out.filter(Boolean)}
+
+function rowLooksHeader(row,words){return row.some(c=>words.some(w=>norm(c).includes(w)))}
+function findHeader(rows,words){for(let i=0;i<Math.min(12,rows.length);i++){if(rows[i]&&rowLooksHeader(rows[i],words))return i}return 0}
+function findCol(header,name){const wn=norm(name);let i=header.findIndex(h=>norm(h)===wn);if(i<0)i=header.findIndex(h=>norm(h).includes(wn));return i}
+function parseDate(v){if(v==null||v==='')return null;if(v instanceof Date)return v;if(typeof v==='number'||/^\d+(\.\d+)?$/.test(String(v))){const n=Number(v);if(n>20000&&n<70000)return new Date(Math.round((n-25569)*86400*1000))}const s=String(v).trim();let m=s.match(/^(\d{1,2})[\.\/-](\d{1,2})[\.\/-](\d{2,4})/);if(m){let y=Number(m[3]);if(y<100)y+=2000;return new Date(y,Number(m[2])-1,Number(m[1]))}let d=new Date(s);return isNaN(d)?null:d}
+function fmtDate(d){return d?String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear():''}
+
+// ---------- Bocas → storeByNum/bfToTienda (reemplaza a Maestro Tiendas cuando esa hoja no existe) ----------
+function applyBocasRows(rows){
+  const hIdx=findHeader(rows,['n° tienda','supervisor','boca fiori']);
+  const h=rows[hIdx];
+  const iNT=findCol(h,'N° Tienda'),iNombre=findCol(h,'Nombre'),iCluster=findCol(h,'Cluster'),iReg=findCol(h,'Reg Geografica'),iStatus=findCol(h,'Status'),iBF=findCol(h,'Boca Fiori'),iED=findCol(h,'Entrega directa'),iSup=findCol(h,'Supervisor');
+  let iReg2=iReg; if(iReg2<0) iReg2=findCol(h,'Zona Geografica');
+  let count=0;
+  for(const r of rows.slice(hIdx+1)){
+    if(!r)continue;const nt=r[iNT];if(nt==null||nt==='')continue;
+    const ntKey=materialKey(nt);
+    const prev=storeByNum[ntKey]||{};
+    storeByNum[ntKey]={
+      nombre:(r[iNombre]!=null&&r[iNombre]!==''?r[iNombre]:prev.nombre),
+      area:(iReg2>=0&&r[iReg2]!=null&&r[iReg2]!==''?String(r[iReg2]).trim():(prev.area||'Sin dato')),
+      rolLocal:(r[iCluster]!=null&&r[iCluster]!==''?String(r[iCluster]).trim():(prev.rolLocal||'Sin dato')),
+      vigencia:(r[iStatus]!=null&&r[iStatus]!==''?String(r[iStatus]).trim():(prev.vigencia||'Sin dato')),
+      formaEntrega:(r[iED]!=null&&r[iED]!==''?String(r[iED]).trim():(prev.formaEntrega||'Sin dato')),
+      supervisor:(iSup>=0&&r[iSup]!=null&&r[iSup]!==''?String(r[iSup]).trim():(prev.supervisor||'Sin dato')),
+      bocaFiori:(r[iBF]!=null&&r[iBF]!==''?String(r[iBF]).trim():(prev.bocaFiori||''))
+    };
+    if(r[iBF]!=null&&r[iBF]!=='')bfToTienda[materialKey(r[iBF])]=ntKey;
+    count++;
+  }
+  return count;
+}
+
+// ---------- Carga SCRD: consolidado + Maestro Producto + Maestro Tiendas + Base ----------
+async function loadSCRD(f){
+  try{
+    setStatus('statusScore','Leyendo SCRD...','muted');await tick();
+
+    const mpRows=await readXlsxSheet(f,['Maestro Producto']);
+    const mpH=mpRows[findHeader(mpRows,['sku','ean','descripcion'])];
+    const mpStart=findHeader(mpRows,['sku','ean','descripcion'])+1;
+    const iSku=findCol(mpH,'SKU'),iEan=findCol(mpH,'EAN'),iDesc=findCol(mpH,'Descripcion'),iMrp=findCol(mpH,'MRP'),iGn=findCol(mpH,'Gran Negocio'),iFam=findCol(mpH,'Familia'),iUxB=findCol(mpH,'UxB'),iMarca=findCol(mpH,'Marca');
+    productByEan={};
+    for(const r of mpRows.slice(mpStart)){
+      if(!r)continue;const ean=r[iEan];if(ean==null||ean==='')continue;
+      productByEan[String(ean).trim()]={sku:r[iSku],desc:r[iDesc],mrp:iMrp>=0&&r[iMrp]!=null&&r[iMrp]!==''?String(r[iMrp]).trim():'Sin dato',gn:iGn>=0&&r[iGn]!=null&&r[iGn]!==''?String(r[iGn]).trim():'Sin dato',familia:iFam>=0&&r[iFam]!=null&&r[iFam]!==''?String(r[iFam]).trim():'Sin dato',uxb:iUxB>=0&&r[iUxB]!=null&&r[iUxB]!==''?nval(r[iUxB]):'Sin dato',marca:iMarca>=0&&r[iMarca]!=null&&r[iMarca]!==''?String(r[iMarca]).trim():'Sin dato'};
+    }
+    await tick();
+
+    const mtHIdx0=-1; // (reservado, ver bloque try/catch de abajo)
+    try{
+      const mtRows=await readXlsxSheet(f,['Maestro Tiendas']);
+      applyBocasRows(mtRows);
+    }catch(e){
+      console.warn('SCRD sin hoja "Maestro Tiendas": uso el maestro de tiendas de Bocas (Gestión de Pedidos), que debería haberse pre-cargado.', e);
+    }
+    await tick();
+
+    let stockCDByEan={};
+    let eeByEan={};
+    try{
+      const baseRows=await readXlsxSheet(f,['Base']);
+      const baseHIdx=findHeader(baseRows,['ean','stock cd']);
+      const baseH=baseRows[baseHIdx];
+      const iBEan=findCol(baseH,'Ean');let iBStockCD=findCol(baseH,'Stock CD uni');if(iBStockCD<0)iBStockCD=findCol(baseH,'Stock CD $');
+      const iBEE=findCol(baseH,'EE');
+      if(iBEan>=0&&iBStockCD>=0){
+        for(const r of baseRows.slice(baseHIdx+1)){
+          if(!r)continue;const ean=r[iBEan];if(ean==null||ean==='')continue;
+          stockCDByEan[String(ean).trim()]=nval(r[iBStockCD]);
+          if(iBEE>=0)eeByEan[String(ean).trim()]=(r[iBEE]!=null&&r[iBEE]!==''?String(r[iBEE]).trim():'');
+        }
+      }
+    }catch(e){console.warn('Sin hoja Base en el SCRD: Stock CD y EE quedarán vacíos, y el KPI de Oportunidades no será representativo.',e)}
+    await tick();
+
+    let activeByEanTienda={};
+    try{
+      const vmRows=await readXlsxSheet(f,['Venta Media']);
+      const vmHIdx=findHeader(vmRows,['ean']);
+      const vmH=vmRows[vmHIdx];
+      const iVMEan=findCol(vmH,'Ean');
+      const colTienda={};
+      vmH.forEach((h,idx)=>{const hs=String(h??'').trim();if(idx!==iVMEan&&/^\d+$/.test(hs))colTienda[idx]=hs;});
+      for(const r of vmRows.slice(vmHIdx+1)){
+        if(!r)continue;const ean=r[iVMEan];if(ean==null||ean==='')continue;
+        const eanKey=String(ean).trim();
+        for(const idxStr in colTienda){
+          const idx=Number(idxStr),tKey=colTienda[idxStr],val=r[idx];
+          activeByEanTienda[eanKey+'|'+tKey]=(val!=null&&val!=='')?'Activo':'Inactivo';
+        }
+      }
+    }catch(e){console.warn('Sin hoja Venta Media en el SCRD: el filtro de Estado SKU no estará disponible (quedará en "Sin dato").',e)}
+    await tick();
+
+    const consRows=await readXlsxSheet(f,['consolidado']);
+    const consHIdx=findHeader(consRows,['ean','tienda','quiebres']);
+    const consH=consRows[consHIdx];
+    const iCEan=findCol(consH,'Ean'),iCTienda=findCol(consH,'Tienda'),iCVM=findCol(consH,'Vta media'),iCStock=findCol(consH,'Stock'),iCQ=findCol(consH,'Quiebres'),iCGN=findCol(consH,'Gran Negocio');
+
+    data=[];
+    for(const r of consRows.slice(consHIdx+1)){
+      if(!r)continue;
+      const ean=r[iCEan];const tiendaRaw=r[iCTienda];
+      if(ean==null||ean===''||tiendaRaw==null||tiendaRaw==='')continue;
+      const ntKey=materialKey(tiendaRaw);if(!ntKey)continue;
+      const store=storeByNum[ntKey];
+      const prod=productByEan[String(ean).trim()];
+      const area=store?store.area:'Sin dato';
+      if(invalidArea(area)&&!store)continue;
+      const q=nval(r[iCQ]);
+      data.push({
+        area:area,
+        local:ntKey,
+        ean:String(ean).trim(),
+        cod:prod?String(prod.sku??''):'',
+        sku:materialKey(prod?prod.sku:''),
+        desc:prod?prod.desc:'',
+        formaEntrega:store?store.formaEntrega:'Sin dato',
+        vigencia:store?store.vigencia:'Sin dato',
+        rolLocal:store?store.rolLocal:'Sin dato',
+        quiebre:q,
+        quebrado:isBreak(q),
+        stockBoca:nval(r[iCStock]),
+        stockCD:stockCDByEan[String(ean).trim()]||0,
+        mrp:prod?prod.mrp:'Sin dato',
+        gn:prod?prod.gn:(iCGN>=0?String(r[iCGN]??'').trim():'Sin dato'),
+        familia:prod?prod.familia:'Sin dato',
+        marca:prod?prod.marca:'Sin dato',
+        supervisor:store?store.supervisor:'Sin dato',
+        bocaFiori:store?store.bocaFiori:'',
+        nombreTienda:store?store.nombre:('Tienda '+ntKey),
+        ee:eeByEan[String(ean).trim()]!=null?eeByEan[String(ean).trim()]:'',
+        ventaMedia:nval(r[iCVM]),
+        estadoSku:activeByEanTienda[String(ean).trim()+'|'+ntKey]||'Sin dato',
+        minimo:minByKey[String(ean).trim()+'|'+ntKey]!=null?minByKey[String(ean).trim()+'|'+ntKey]:'Sin dato',
+        pendiente:pendByKey[String(ean).trim()+'|'+ntKey]||'Sin dato',
+        pendienteQty:pendQtyByKey[String(ean).trim()+'|'+ntKey]!=null?pendQtyByKey[String(ean).trim()+'|'+ntKey]:0,
+        cdAsignado:distByKey[String(ean).trim()+'|'+ntKey]||null,
+        stockCDReal:(distByKey[String(ean).trim()+'|'+ntKey]&&cdStockByEanCD[String(ean).trim()+'|'+distByKey[String(ean).trim()+'|'+ntKey]]!=null)?cdStockByEanCD[String(ean).trim()+'|'+distByKey[String(ean).trim()+'|'+ntKey]]:null,
+        uxb:prod?prod.uxb:'Sin dato'
+      });
+    }
+
+    loaded=true;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('locked'));populateFilters();applyFilters();
+    setStatus('statusScore','SCRD cargado: '+fmtNum(data.length)+' filas (Tienda × EAN).','ok');
+    document.querySelector('[data-tab="dash"]').click();
+  }catch(e){console.error(e);setStatus('statusScore','Error: '+e.message,'err')}
+}
+
+// ---------- Carga Gestión de Pedidos: Pedidos + Viajes-entregas ----------
+async function loadGestionPedidos(f){
+  try{
+    setStatus('statusAFO','Leyendo Gestión de Pedidos...','muted');await tick();
+
+    const pedRows=await readXlsxSheet(f,['Pedidos']);
+    const pedHIdx=findHeader(pedRows,['fecha del documento','material','destinatario']);
+    const pedH=pedRows[pedHIdx];
+    const iPFecha=findCol(pedH,'Fecha del documento'),iPRef=findCol(pedH,'Referencia cliente'),iPPed=findCol(pedH,'Pedido de cliente'),iPDest=findCol(pedH,'Destinatario'),iPMat=findCol(pedH,'Material');
+
+    const viaRows=await readXlsxSheet(f,['Viajes-entregas','Viajes-Entregas']);
+    const viaHIdx=findHeader(viaRows,['fecha de entrega','material','destinatario']);
+    const viaH=viaRows[viaHIdx];
+    const iVDest=findCol(viaH,'Destinatario'),iVFecha=findCol(viaH,'Fecha de entrega'),iVMat=findCol(viaH,'Material');
+
+    if(!pedRows.length||!viaRows.length)throw new Error('No encontré Pedidos y/o Viajes-entregas.');
+    if(!Object.keys(storeByNum).length)throw new Error('Cargá primero el SCRD (necesito el Maestro Tiendas para ubicar cada Destinatario mcía. en su Área).');
+
+    // ---- Bocas: Supervisor por N° Tienda (reemplaza el que venía de SCRD·Maestro Tiendas) ----
+    let supervisorUpdates=0;
+    try{
+      const bocasRows=await readXlsxSheet(f,['Bocas']);
+      const bocasHIdx=findHeader(bocasRows,['n° tienda','supervisor']);
+      const bocasH=bocasRows[bocasHIdx];
+      const iBNT=findCol(bocasH,'N° Tienda'),iBSup=findCol(bocasH,'Supervisor');
+      if(iBNT>=0&&iBSup>=0){
+        for(const r of bocasRows.slice(bocasHIdx+1)){
+          if(!r)continue;const nt=r[iBNT];if(nt==null||nt==='')continue;
+          const ntKey=materialKey(nt);
+          const sup=r[iBSup]!=null&&r[iBSup]!==''?String(r[iBSup]).trim():null;
+          if(storeByNum[ntKey]&&sup){storeByNum[ntKey].supervisor=sup;supervisorUpdates++;}
+        }
+        if(data.length){
+          data.forEach(d=>{const store=storeByNum[d.local];if(store)d.supervisor=store.supervisor;});
+          populateFilters();
+          if(loaded)applyFilters();
+        }
+      }
+    }catch(e){console.warn('Sin hoja Bocas en Gestión de Pedidos: se mantiene el Supervisor de Maestro Tiendas.',e)}
+
+    afo={loaded:true,purchases:{},deliveries:{}};
+    let pedMatched=0,pedTotal=0;
+    for(const r of pedRows.slice(pedHIdx+1)){
+      if(!r)continue;
+      const fecha=parseDate(r[iPFecha]);if(!fecha)continue;
+      pedTotal++;
+      const dest=r[iPDest]!=null?materialKey(r[iPDest]):'';
+      const mat=materialKey(r[iPMat]);
+      const oc=String(r[iPRef]??r[iPPed]??'').trim();
+      const ntKey=bfToTienda[dest];const store=ntKey?storeByNum[ntKey]:null;const area=store?store.area:null;
+      if(!mat||!area)continue;
+      pedMatched++;
+      const k=mat+'|'+area,cur=afo.purchases[k];
+      if(!cur||fecha>cur.date)afo.purchases[k]={date:fecha,oc,area,material:mat};
+    }
+    let viaMatched=0,viaTotal=0;
+    for(const r of viaRows.slice(viaHIdx+1)){
+      if(!r)continue;
+      const dest=r[iVDest]!=null?materialKey(r[iVDest]):'';
+      if(!dest)continue;
+      viaTotal++;
+      const fecha=parseDate(r[iVFecha]);
+      const mat=materialKey(r[iVMat]);
+      const ntKey=bfToTienda[dest];const store=ntKey?storeByNum[ntKey]:null;const area=store?store.area:null;
+      if(!fecha||!mat||!area)continue;
+      viaMatched++;
+      const k=mat+'|'+area,cur=afo.deliveries[k];
+      if(!cur||fecha>cur.date)afo.deliveries[k]={date:fecha,area,material:mat};
+    }
+
+    setStatus('statusAFO','Gestión de Pedidos cargada: '+fmtNum(Object.keys(afo.purchases).length)+' compras y '+fmtNum(Object.keys(afo.deliveries).length)+' entregas por SKU/área ('+fmtNum(pedMatched)+'/'+fmtNum(pedTotal)+' filas de Pedidos y '+fmtNum(viaMatched)+'/'+fmtNum(viaTotal)+' de Viajes-entregas cruzaron contra el Maestro Tiendas)'+(supervisorUpdates?('. Supervisor actualizado desde Bocas para '+fmtNum(supervisorUpdates)+' tiendas.'):'.'),'ok');
+    if(loaded)renderAll();
+  }catch(e){console.error(e);setStatus('statusAFO','Error: '+e.message,'err')}
+}
+
+function unique(a){return[...new Set(a.filter(x=>String(x).trim()!==''))].sort((a,b)=>String(a).localeCompare(String(b),'es'))}
+
+// ---------- Carga Parámetros (Mínimos y Pendientes): Min Tdas + Pend Tdas ----------
+// Este archivo suele venir en .xlsb (formato binario de Excel), que no es un ZIP de XML como
+// el .xlsx normal, así que acá no reutilizamos el lector manual (readXlsxSheet) sino la librería
+// SheetJS (cargada desde CDN en el <head>), que sabe leer .xlsb, .xlsx y .xls por igual.
+async function readXlsbSheet(file,sheetNames){
+  if(typeof XLSX==='undefined')throw new Error('No se pudo cargar la librería de lectura de archivos. Revisá tu conexión a internet y volvé a intentar.');
+  const buf=await file.arrayBuffer();
+  const wb=XLSX.read(buf,{type:'array'});
+  const wanted=sheetNames.map(norm);
+  let wsName=null;
+  for(const name of wb.SheetNames){if(wanted.includes(norm(name))){wsName=name;break}}
+  if(!wsName)throw new Error('No encontré la hoja: '+sheetNames.join(' / '));
+  return XLSX.utils.sheet_to_json(wb.Sheets[wsName],{header:1,raw:true,defval:null});
+}
+function tiendaColsOf(header,iEanCol){
+  const cols={};
+  header.forEach((h,idx)=>{const hs=String(h??'').trim();if(idx!==iEanCol&&/^\d+$/.test(hs))cols[idx]=hs;});
+  return cols;
+}
+async function loadParametros(f){
+  try{
+    setStatus('statusParam','Leyendo Parámetros...','muted');await tick();
+
+    const minRows=await readXlsbSheet(f,['Min Tdas']);
+    const minHIdx=findHeader(minRows,['ean']);
+    const minH=minRows[minHIdx];
+    const iMinEan=findCol(minH,'Ean');
+    const minCols=tiendaColsOf(minH,iMinEan);
+    const newMinByKey={};
+    for(const r of minRows.slice(minHIdx+1)){
+      if(!r)continue;const ean=r[iMinEan];if(ean==null||ean==='')continue;
+      const eanKey=String(ean).trim();
+      for(const idxStr in minCols){
+        const idx=Number(idxStr),tKey=minCols[idxStr],val=r[idx];
+        if(val!=null&&val!=='')newMinByKey[eanKey+'|'+tKey]=nval(val);
+      }
+    }
+    await tick();
+
+    const pendRows=await readXlsbSheet(f,['Pend Tdas']);
+    const pendHIdx=findHeader(pendRows,['ean']);
+    const pendH=pendRows[pendHIdx];
+    const iPendEan=findCol(pendH,'Ean');
+    const pendCols=tiendaColsOf(pendH,iPendEan);
+    const newPendByKey={};
+    const newPendQtyByKey={};
+    for(const r of pendRows.slice(pendHIdx+1)){
+      if(!r)continue;const ean=r[iPendEan];if(ean==null||ean==='')continue;
+      const eanKey=String(ean).trim();
+      for(const idxStr in pendCols){
+        const idx=Number(idxStr),tKey=pendCols[idxStr],val=r[idx];
+        newPendByKey[eanKey+'|'+tKey]=(val==null||val==='')?'Sin dato':(nval(val)>0?'Sí':'No');
+        if(val!=null&&val!=='')newPendQtyByKey[eanKey+'|'+tKey]=nval(val);
+      }
+    }
+
+    minByKey=newMinByKey;pendByKey=newPendByKey;pendQtyByKey=newPendQtyByKey;
+
+    // ---- Dist: CD asignado por Tienda × EAN (opcional: tu archivo real puede no traerlo) ----
+    let newDistByKey={};
+    let distNote='';
+    try{
+      const distRows=await readXlsbSheet(f,['Dist']);
+      const distHIdx=findHeader(distRows,['ean']);
+      const distH=distRows[distHIdx];
+      const iDistEan=findCol(distH,'Ean');
+      const distCols=tiendaColsOf(distH,iDistEan);
+      const cdKey=v=>{if(v==null||v==='')return null;const s=String(v).trim();if(/^np$/i.test(s))return null;if(/^\d+(\.0+)?$/.test(s))return String(parseInt(s,10));return s;};
+      for(const r of distRows.slice(distHIdx+1)){
+        if(!r)continue;const ean=r[iDistEan];if(ean==null||ean==='')continue;
+        const eanKey=String(ean).trim();
+        for(const idxStr in distCols){
+          const idx=Number(idxStr),tKey=distCols[idxStr],cd=cdKey(r[idx]);
+          if(cd)newDistByKey[eanKey+'|'+tKey]=cd;
+        }
+      }
+    }catch(e){
+      distNote=' Sin hoja "Dist": las pestañas de Oportunidades no van a poder asignar CD por Tienda×EAN.';
+      console.warn('Parámetros sin hoja Dist', e);
+    }
+    await tick();
+
+    // ---- Stk Centros: stock disponible por CD × EAN (opcional) ----
+    let newCdStockByEanCD={};
+    try{
+      const stkRows=await readXlsbSheet(f,['Stk Centros']);
+      const stkHIdx=findHeader(stkRows,['ean']);
+      const stkH=stkRows[stkHIdx];
+      const iStkEan=findCol(stkH,'Ean');
+      const stkCdCols={};
+      stkH.forEach((h,idx)=>{const hs=String(h??'').trim();const m=hs.match(/^stk\s*cd\b.*?(\d+)\s*$/i);if(m)stkCdCols[m[1]]=idx;});
+      for(const r of stkRows.slice(stkHIdx+1)){
+        if(!r)continue;const ean=r[iStkEan];if(ean==null||ean==='')continue;
+        const eanKey=String(ean).trim();
+        for(const cdId in stkCdCols){
+          const idx=stkCdCols[cdId],val=r[idx];
+          newCdStockByEanCD[eanKey+'|'+cdId]=nval(val);
+        }
+      }
+    }catch(e){
+      distNote+=' Sin hoja "Stk Centros": ídem.';
+      console.warn('Parámetros sin hoja Stk Centros', e);
+    }
+
+    distByKey=newDistByKey;cdStockByEanCD=newCdStockByEanCD;paramsLoaded=true;
+    applyParametrosToData();
+    setStatus('statusParam','Parámetros cargados: '+fmtNum(Object.keys(minByKey).length)+' mínimos, '+fmtNum(Object.keys(pendByKey).length)+' pendientes y '+fmtNum(Object.keys(newDistByKey).length)+' asignaciones CD→Tienda por EAN.'+distNote,distNote?'warn':'ok');
+  }catch(e){console.error(e);setStatus('statusParam','Error: '+e.message,'err')}
+}
+function applyParametrosToData(){
+  if(!data.length)return;
+  data.forEach(d=>{
+    const k=d.ean+'|'+d.local;
+    d.minimo=minByKey[k]!=null?minByKey[k]:'Sin dato';
+    d.pendiente=pendByKey[k]||'Sin dato';
+    d.pendienteQty=pendQtyByKey[k]!=null?pendQtyByKey[k]:0;
+    d.cdAsignado=distByKey[k]||null;
+    d.stockCDReal=(d.cdAsignado&&cdStockByEanCD[d.ean+'|'+d.cdAsignado]!=null)?cdStockByEanCD[d.ean+'|'+d.cdAsignado]:null;
+  });
+  if(loaded)applyFilters();
+  applyBodegaFilters();
+  renderOportBodega();
+  applySnacksFilters();
+  applyScrdFilters();
+}
+
+function fillSel(id,vals,all){document.getElementById(id).innerHTML=`<option value="__all">${all}</option>`+vals.map(v=>`<option>${esc(v)}</option>`).join('')}
+function populateFilters(){fillSel('fMRP',unique(data.map(d=>d.mrp)),'Todos');fillSel('fGN',unique(data.map(d=>d.gn)),'Todos');fillSel('fVig',unique(data.map(d=>d.vigencia)),'Todas');fillSel('fRol',unique(data.map(d=>d.rolLocal)),'Todos');fillSel('fForma',unique(data.map(d=>d.formaEntrega)),'Todas');fillSel('fArea',unique(data.map(d=>d.area)),'Todas');fillSel('fSup',unique(data.map(d=>d.supervisor)),'Todos');
+  const bodegaData=data.filter(d=>norm(d.gn)==='bodega');
+  fillSel('fBSup',unique(bodegaData.map(d=>d.supervisor)),'Todos');
+  fillSel('fBZona',unique(bodegaData.map(d=>d.area)),'Todas');
+  fillSel('fBBoca',unique(bodegaData.map(d=>d.nombreTienda)),'Todas');
+  fillSel('fBFamilia',unique(bodegaData.map(d=>d.familia)),'Todas');
+  const snacksData=data.filter(d=>norm(d.gn)==='snacks');
+  fillSel('fSnSup',unique(snacksData.map(d=>d.supervisor)),'Todos');
+  fillSel('fSnZona',unique(snacksData.map(d=>d.area)),'Todas');
+  fillSel('fSnBoca',unique(snacksData.map(d=>d.nombreTienda)),'Todas');
+  fillSel('fSnFamilia',unique(snacksData.map(d=>d.familia)),'Todas');
+  fillSel('fSnMarca',unique(snacksData.map(d=>d.marca)),'Todas');
+  fillSel('fScrdFamilia',unique(data.map(d=>d.familia)),'Todas');
+  fillSel('fScrdGN',unique(data.map(d=>d.gn)),'Todos');
+  fillSel('fScrdSup',unique(data.map(d=>d.supervisor)),'Todos');
+  applyBodegaFilters();renderOportBodega();applySnacksFilters();applyScrdFilters();
+}
+function resetFilters(){['fMRP','fGN','fVig','fRol','fForma','fArea','fSup','fEstadoSku','fPendiente'].forEach(id=>document.getElementById(id).value='__all');fEAN.value='';fSKU.value='';fTiendaNum.value='';fBocaFiori.value='';applyFilters()}
+function applyFilters(){const mrp=fMRP.value,gn=fGN.value,vig=fVig.value,rol=fRol.value,forma=fForma.value,area=fArea.value,sup=fSup.value,estado=fEstadoSku.value,pend=fPendiente.value,ean=norm(fEAN.value),sku=norm(fSKU.value),tiendaNum=norm(fTiendaNum.value),bocaFiori=norm(fBocaFiori.value);filtered=data.filter(d=>(mrp==='__all'||d.mrp===mrp)&&(gn==='__all'||d.gn===gn)&&(vig==='__all'||d.vigencia===vig)&&(rol==='__all'||d.rolLocal===rol)&&(forma==='__all'||d.formaEntrega===forma)&&(area==='__all'||d.area===area)&&(sup==='__all'||d.supervisor===sup)&&(estado==='__all'||d.estadoSku===estado)&&(pend==='__all'||d.pendiente===pend)&&(!ean||norm(d.ean).includes(ean))&&(!sku||norm(d.cod).includes(sku)||norm(d.sku).includes(sku))&&(!tiendaNum||norm(d.local).includes(tiendaNum))&&(!bocaFiori||norm(d.bocaFiori).includes(bocaFiori)));renderAll()}
+function group(arr,key){const m={};arr.forEach(d=>{const k=d[key]||'Sin dato';(m[k]??=[]).push(d)});return m}
+function avgBreak(a){return a.length?a.reduce((s,d)=>s+d.quiebre,0)/a.length:0}
+function opps(a=filtered){return a.filter(d=>d.quebrado&&d.cdAsignado&&d.stockCDReal!=null&&d.stockCDReal>0)}
+function topArticleAreaRows(){const m={};filtered.forEach(d=>{const k=(d.ean||'')+'|'+d.sku+'|'+d.area;if(!m[k])m[k]={area:d.area,ean:d.ean,sku:d.sku||d.cod,desc:d.desc,mrp:d.mrp,gn:d.gn,rows:0,quiebres:0,opp:0,minSum:0,minCount:0,pendCount:0};m[k].rows++;if(d.quebrado)m[k].quiebres++;if(d.quebrado&&d.stockCD>0)m[k].opp++;if(typeof d.minimo==='number'){m[k].minSum+=d.minimo;m[k].minCount++;}if(d.pendiente==='Sí')m[k].pendCount++;});return Object.values(m).map(x=>{const key=materialKey(x.sku)+'|'+x.area;const p=afo.purchases[key],de=afo.deliveries[key];return {...x,quiebrePct:x.rows?x.quiebres/x.rows:0,minProm:x.minCount?x.minSum/x.minCount:null,pendientes:x.pendCount,lastPurchase:p?.date||null,lastOC:p?.oc||'',lastDelivery:de?.date||null}}).filter(x=>x.quiebres>0).sort((a,b)=>b.quiebrePct-a.quiebrePct||b.opp-a.opp||String(a.area).localeCompare(String(b.area),'es'))}
+function renderTopAreaDash(){const rows=topArticleAreaRows().slice(0,100);table('tblTopAreaDash',['Área','EAN','SKU','Descripción','% Quiebre','Quiebres','Oportunidades','Mínimo prom.','Pendientes','Última compra','Última OC','Última entrega'],rows.map(x=>[x.area,x.ean,x.sku,x.desc,fmtPct(x.quiebrePct),fmtNum(x.quiebres),fmtNum(x.opp),x.minProm!=null?x.minProm.toFixed(1):'Sin dato',fmtNum(x.pendientes),fmtDate(x.lastPurchase),x.lastOC,fmtDate(x.lastDelivery)]))}
+function renderAll(){const br=avgBreak(filtered),op=opps(),broken=filtered.filter(d=>d.quebrado),byArea=Object.entries(group(filtered,'area')).map(([k,v])=>({area:k,q:avgBreak(v),rows:v.length,opp:opps(v).length})).sort((a,b)=>b.q-a.q),critical=byArea[0];rowsPill.textContent=fmtNum(filtered.length)+' filas';kQuiebre.textContent=fmtPct(br);kDisp.textContent=fmtPct(br);kOpp.textContent=fmtNum(op.length);kEAN.textContent=fmtNum(new Set(broken.map(d=>d.ean)).size);kLocales.textContent=fmtNum(new Set(broken.map(d=>d.local)).size);kArea.textContent=critical?critical.area:'-';btnDownload.disabled=op.length===0;renderBars('chartArea',byArea.slice(0,10).map(x=>({label:x.area,value:x.q,txt:fmtPct(x.q)})));renderBars('chartDisponibilidad',byArea.slice(0,10).map(x=>({label:x.area,value:x.q,txt:fmtPct(x.q)})));renderBars('chartTop',topArticlesByPct().slice(0,8).map(x=>({label:(x.ean||x.cod)+' — '+(x.desc||'Sin descripción'),value:x.quiebrePct,txt:fmtPct(x.quiebrePct)})));renderArt();renderOpp(op);renderCompras();renderTopAreaDash();renderInsights(byArea,op)}
+function renderBars(id,items){let max=Math.max(...items.map(x=>x.value),0);document.getElementById(id).innerHTML=items.map(x=>`<div class="barrow"><div>${esc(x.label)}</div><div class="bar"><span style="width:${max?Math.max(3,x.value/max*100):0}%"></span></div><b>${esc(x.txt)}</b></div>`).join('')||'<p class="muted">Sin datos.</p>'}
+function topArticles(){const m={};filtered.forEach(d=>{const k=d.ean+'|'+d.sku;if(!m[k])m[k]={ean:d.ean,cod:d.sku||d.cod,desc:d.desc,rows:0,quiebres:0,stockCD:0,opp:0,areas:new Set(),formas:new Set()};m[k].rows++;if(d.quebrado)m[k].quiebres++;m[k].stockCD+=d.stockCD;if(d.quebrado&&d.stockCD>0)m[k].opp++;m[k].areas.add(d.area);m[k].formas.add(d.formaEntrega)});return Object.values(m).map(x=>({...x,quiebrePct:x.rows?x.quiebres/x.rows:0}))}
+function topArticlesByPct(){return topArticles().filter(x=>x.quiebres>0).sort((a,b)=>b.quiebrePct-a.quiebrePct||b.opp-a.opp)}
+function topArticlesByOpp(){return topArticles().filter(x=>x.opp>0).sort((a,b)=>b.opp-a.opp||b.quiebrePct-a.quiebrePct)}
+function table(el,hs,rs){document.getElementById(el).innerHTML='<thead><tr>'+hs.map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody>'+rs.map(r=>'<tr>'+r.map(c=>`<td>${esc(c)}</td>`).join('')+'</tr>').join('')+'</tbody>'}
+function renderArt(){table('tblArt',['EAN','SKU','Descripción','% Quiebre','Quiebres','Oportunidades','Stock CD','Forma Entrega','Áreas'],topArticlesByPct().slice(0,200).map(x=>[x.ean,x.cod,x.desc,fmtPct(x.quiebrePct),fmtNum(x.quiebres),fmtNum(x.opp),fmtNum(x.stockCD),[...x.formas].join(', '),[...x.areas].join(', ')]))}
+function renderOpp(op){
+  if(!paramsLoaded){oppWarn.textContent='⚠️ Todavía no cargaste el archivo de Parámetros (hojas Dist y Stk Centros): sin esos datos no se puede calcular el CD asignado ni su stock, así que esta pestaña queda vacía.';}
+  else{oppWarn.textContent='';}
+  table('tblOpp',['Área','Local','EAN','SKU','Descripción','CD asignado','Stock CD','UxB','Quiebre','Stock boca','Mínimo configurado','Pendiente','Cantidad de bultos necesarios'],op.slice(0,900).map(d=>[d.area,d.local,d.ean,d.sku||d.cod,d.desc,d.cdAsignado,d.stockCDReal,d.uxb,d.quiebre,d.stockBoca,d.minimo,d.pendiente,1]));
+}
+function compraEntregaRows(){const m={};filtered.forEach(d=>{const k=(d.sku||d.cod)+'|'+d.area;if(!m[k])m[k]={area:d.area,sku:d.sku||d.cod,ean:d.ean,desc:d.desc,mrp:d.mrp,gn:d.gn,quiebreRows:0,rows:0,opp:0};m[k].rows++;if(d.quebrado)m[k].quiebreRows++;if(d.quebrado&&d.stockCD>0)m[k].opp++});return Object.values(m).map(x=>{const key=materialKey(x.sku)+'|'+x.area;const p=afo.purchases[key],de=afo.deliveries[key];return {...x,lastPurchase:p?.date||null,lastOC:p?.oc||'',lastDelivery:de?.date||null,quiebrePct:x.rows?x.quiebreRows/x.rows:0}}).sort((a,b)=>a.area.localeCompare(b.area,'es')||String(a.desc).localeCompare(String(b.desc),'es'))}
+function renderCompras(){if(!afo.loaded){afoWarn.textContent='Cargá la Gestión de Pedidos para ver última compra y última entrega.';btnDownloadCE.disabled=true;table('tblCompras',['Región','EAN','SKU','Descripción','Última compra','Última OC','Última entrega','% Quiebre','Oportunidades'],[]);return}afoWarn.textContent='';const rows=compraEntregaRows();btnDownloadCE.disabled=rows.length===0;table('tblCompras',['Región','EAN','SKU','Descripción','MRP','Gran Negocio','Última compra','Última OC','Última entrega','% Quiebre','Oportunidades'],rows.slice(0,1000).map(x=>[x.area,x.ean,x.sku,x.desc,x.mrp,x.gn,fmtDate(x.lastPurchase),x.lastOC,fmtDate(x.lastDelivery),fmtPct(x.quiebrePct),fmtNum(x.opp)]))}
+function activeFilterTxt(){return [fMRP.value!=='__all'?'MRP: '+fMRP.value:null,fGN.value!=='__all'?'Gran Negocio: '+fGN.value:null,fVig.value!=='__all'?'Vigencia: '+fVig.value:null,fRol.value!=='__all'?'Rol Local: '+fRol.value:null,fForma.value!=='__all'?'Forma Entrega: '+fForma.value:null,fArea.value!=='__all'?'Área: '+fArea.value:null,fSup.value!=='__all'?'Supervisor: '+fSup.value:null,fEstadoSku.value!=='__all'?'Estado SKU: '+fEstadoSku.value:null,fPendiente.value!=='__all'?'Pendiente: '+fPendiente.value:null,fEAN.value?'EAN contiene: '+fEAN.value:null,fSKU.value?'SKU contiene: '+fSKU.value:null,fTiendaNum.value?'N° tienda contiene: '+fTiendaNum.value:null,fBocaFiori.value?'Boca Fiori contiene: '+fBocaFiori.value:null].filter(Boolean).join(' · ')||'Sin filtros aplicados'}
+function renderInsights(byArea,op){const top=topArticlesByPct()[0],topOpp=topArticlesByOpp()[0],area=byArea[0];let ce='';if(afo.loaded){const r=compraEntregaRows().filter(x=>x.quiebreRows>0);const old=r.filter(x=>!x.lastPurchase&&!x.lastDelivery).length;ce=`<div class="insight">En la solapa de compras y entregas hay <b>${fmtNum(r.length)}</b> combinaciones artículo/región con quiebre. De esas, <b>${fmtNum(old)}</b> no tienen compra ni entrega detectada en la Gestión de Pedidos cargada.</div>`}else ce='<div class="insight">Todavía no hay Gestión de Pedidos cargada: la solapa de compras y entregas queda pendiente.</div>';insightBox.innerHTML=`<div class="insight"><b>Filtro activo:</b> ${esc(activeFilterTxt())}. Base analizada: ${fmtNum(filtered.length)} registros.</div><div class="insight">El quiebre promedio es <b>${fmtPct(avgBreak(filtered))}</b> y la disponibilidad promedio es <b>${fmtPct(1-avgBreak(filtered))}</b>${area?`, con <b>${esc(area.area)}</b> como área más crítica (${fmtPct(area.q)} de quiebre).`:'.'}</div><div class="insight">Hay <b>${fmtNum(op.length)}</b> oportunidades CD → boca: bocas quebradas con stock disponible en CD (recordá la aclaración sobre Stock CD en la pestaña "Notas del modelo").</div><div class="insight">${top?`El artículo más crítico por porcentaje es <b>${esc(top.ean)}</b> / <b>${esc(top.cod)}</b> — <b>${esc(top.desc||'Sin descripción')}</b>, con <b>${fmtPct(top.quiebrePct)}</b> de quiebre y ${fmtNum(top.opp)} oportunidades.`:'No hay artículos quebrados para el filtro activo.'}</div><div class="insight">${topOpp?`El mayor potencial de recuperación está en <b>${esc(topOpp.ean)}</b> — <b>${esc(topOpp.desc||'Sin descripción')}</b>, con ${fmtNum(topOpp.opp)} oportunidades.`:'No hay oportunidades para el filtro activo.'}</div>${ce}`}
+function downloadTable(filename,hs,rows){let html='<html><head><meta charset="utf-8"></head><body><table><tr>'+hs.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+esc(c)+'</td>').join('')+'</tr>').join('')+'</table></body></html>';const blob=new Blob([html],{type:'application/vnd.ms-excel'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();URL.revokeObjectURL(a.href)}
+function downloadOpps(){const rows=opps().map(d=>[d.cdAsignado,d.local+' · '+d.nombreTienda,d.ean,d.uxb,1]);downloadTable('Oportunidades_Distribucion_CD_Tienda.xls',['CD','Tienda','EAN','UxB','Cantidad de bultos necesarios'],rows)}
+function downloadComprasEntregas(){const rows=compraEntregaRows().map(x=>[x.area,x.ean,x.sku,x.desc,x.mrp,x.gn,fmtDate(x.lastPurchase),x.lastOC,fmtDate(x.lastDelivery),fmtPct(x.quiebrePct),x.quiebreRows,x.opp]);downloadTable('Ultima_Compra_Entrega_Carrefour_Filtrado.xls',['Región','EAN','SKU','Descripción','MRP','Gran Negocio','Última compra','Última OC','Última entrega','% Quiebre','Quiebres','Oportunidades'],rows)}
+
+// ============================================================
+// DASHBOARD BODEGA (Gran Negocio = Bodega), filtros propios
+// ============================================================
+let filteredBodega=[];
+function applyBodegaFilters(){
+  const sup=fBSup.value, zona=fBZona.value, boca=fBBoca.value, tiendaNum=norm(fBTiendaNum.value), bocaFiori=norm(fBBocaFiori.value), ean=norm(fBEAN.value), fam=fBFamilia.value;
+  filteredBodega=data.filter(d=>norm(d.gn)==='bodega'
+    &&(sup==='__all'||d.supervisor===sup)
+    &&(zona==='__all'||d.area===zona)
+    &&(boca==='__all'||d.nombreTienda===boca)
+    &&(!tiendaNum||norm(d.local).includes(tiendaNum))
+    &&(!bocaFiori||norm(d.bocaFiori).includes(bocaFiori))
+    &&(!ean||norm(d.ean).includes(ean))
+    &&(fam==='__all'||d.familia===fam)
+  );
+  renderBodegaAll();
+}
+function resetBodegaFilters(){
+  ['fBSup','fBZona','fBBoca','fBFamilia'].forEach(id=>document.getElementById(id).value='__all');
+  fBTiendaNum.value='';fBBocaFiori.value='';fBEAN.value='';
+  applyBodegaFilters();
+}
+function renderBodegaAll(){
+  rowsPillB.textContent=fmtNum(filteredBodega.length)+' filas';
+  const byTienda=group(filteredBodega,'local');
+  const tiendaStats=Object.entries(byTienda).map(([t,v])=>({
+    tienda:t,nombre:v[0].nombreTienda,q:avgBreak(v),rows:v.length,quebrados:v.filter(d=>d.quebrado).length,supervisor:v[0].supervisor,area:v[0].area
+  }));
+  const tiendasConQuiebre=tiendaStats.filter(t=>t.quebrados>0);
+  kBTiendas.textContent=fmtNum(tiendasConQuiebre.length);
+  kBPct.textContent=tiendaStats.length?fmtPct(tiendasConQuiebre.length/tiendaStats.length):'-';
+  kBSkus.textContent=fmtNum(filteredBodega.filter(d=>d.quebrado).length);
+  const bySup={};filteredBodega.filter(d=>d.quebrado).forEach(d=>{const s=d.supervisor||'Sin dato';bySup[s]=(bySup[s]||0)+1});
+  const supTop=Object.entries(bySup).sort((a,b)=>b[1]-a[1])[0];
+  kBSupCrit.textContent=supTop?supTop[0]+' ('+fmtNum(supTop[1])+')':'-';
+  const byZona={};filteredBodega.filter(d=>d.quebrado).forEach(d=>{const z=d.area||'Sin dato';byZona[z]=(byZona[z]||0)+1});
+  const zonaTop=Object.entries(byZona).sort((a,b)=>b[1]-a[1])[0];
+  kBZonaCrit.textContent=zonaTop?zonaTop[0]+' ('+fmtNum(zonaTop[1])+')':'-';
+  const byQuebrados=[...tiendaStats].sort((a,b)=>b.quebrados-a.quebrados).slice(0,10);
+  renderBars('chartBTienda',byQuebrados.map(x=>({label:x.tienda+' · '+x.nombre,value:x.quebrados,txt:fmtNum(x.quebrados)})));
+  const byPct=[...tiendaStats].sort((a,b)=>b.q-a.q).slice(0,10);
+  renderBars('chartBPct',byPct.map(x=>({label:x.tienda+' · '+x.nombre,value:x.q,txt:fmtPct(x.q)})));
+}
+
+// ============================================================
+// OPORTUNIDADES DE DISTRIBUCIÓN — BODEGA (Gran Negocio = Bodega)
+// Mismo criterio que la pestaña 4: quiebre en la tienda + CD asignado (Parámetros·Dist)
+// con stock disponible (Parámetros·Stk Centros). Ya no se usa el criterio SCRD·EE ≠ "XD".
+// ============================================================
+function oportBodegaRows(){
+  return data.filter(d=>norm(d.gn)==='bodega' && d.quebrado && d.cdAsignado && d.stockCDReal!=null && d.stockCDReal>0);
+}
+function renderOportBodega(){
+  const qEl=document.getElementById('fOBSearch');
+  const q=norm(qEl?qEl.value:'');
+  if(!paramsLoaded){document.getElementById('obWarn').textContent='⚠️ Todavía no cargaste el archivo de Parámetros (hojas Dist y Stk Centros): sin esos datos no se puede calcular el CD asignado ni su stock, así que esta pestaña queda vacía.';}
+  else{document.getElementById('obWarn').textContent='';}
+  const rows=oportBodegaRows().filter(d=>!q||norm(d.ean).includes(q)||norm(d.desc).includes(q)||norm(d.nombreTienda).includes(q)||norm(d.supervisor).includes(q));
+  rowsPillOB.textContent=fmtNum(rows.length)+' filas';
+  table('tblOportBodega',['Supervisor','Zona','Boca','N° tienda','Boca Fiori','EAN','Descripción','Familia','CD asignado','Stock CD','UxB','Estado SCRD (vigencia)','Cantidad de bultos necesarios'],
+    rows.slice(0,1500).map(d=>[d.supervisor,d.area,d.nombreTienda,d.local,d.bocaFiori,d.ean,d.desc,d.familia,d.cdAsignado,d.stockCDReal,d.uxb,d.vigencia,1]));
+}
+function downloadOportBodega(){
+  const rows=oportBodegaRows();
+  downloadTable('Oportunidades_Distribucion_Bodega_CD_Tienda.xls',['CD','Tienda','EAN','UxB','Cantidad de bultos necesarios','Supervisor','Zona','Boca Fiori','Descripción','Familia'],
+    rows.map(d=>[d.cdAsignado,d.local+' · '+d.nombreTienda,d.ean,d.uxb,1,d.supervisor,d.area,d.bocaFiori,d.desc,d.familia]));
+}
+
+// ============================================================
+// OPORTUNIDADES DE DISTRIBUCIÓN — SNACKS (Gran Negocio = Snacks)
+// Espejo funcional de "8. Oportunidades Bodega": misma metodología y criterios
+// (quiebre en la tienda + CD asignado con stock disponible en Parámetros·Dist/Stk Centros,
+// sin considerar Pendiente). Único cambio: el filtro de Gran Negocio.
+// Orden: ya viene filtrado a quiebre+stock CD>0 (criterio #1); se ordena por mayor venta
+// media (criterio #2) y luego por mayor stock en CD como proxy de impacto potencial (criterio #3).
+// ============================================================
+let filteredSnacks=[];
+function oportSnacksRows(){
+  return data.filter(d=>norm(d.gn)==='snacks' && d.quebrado && d.cdAsignado && d.stockCDReal!=null && d.stockCDReal>0);
+}
+function applySnacksFilters(){
+  const sup=fSnSup.value, zona=fSnZona.value, boca=fSnBoca.value, tiendaNum=norm(fSnTiendaNum.value),
+        bocaFiori=norm(fSnBocaFiori.value), ean=norm(fSnEAN.value), fam=fSnFamilia.value, marca=fSnMarca.value;
+  filteredSnacks=oportSnacksRows().filter(d=>(sup==='__all'||d.supervisor===sup)
+    &&(zona==='__all'||d.area===zona)
+    &&(boca==='__all'||d.nombreTienda===boca)
+    &&(!tiendaNum||norm(d.local).includes(tiendaNum))
+    &&(!bocaFiori||norm(d.bocaFiori).includes(bocaFiori))
+    &&(!ean||norm(d.ean).includes(ean))
+    &&(fam==='__all'||d.familia===fam)
+    &&(marca==='__all'||d.marca===marca)
+  );
+  renderSnacksKPIs();
+  renderOportSnacks();
+}
+function resetSnacksFilters(){
+  ['fSnSup','fSnZona','fSnBoca','fSnFamilia','fSnMarca'].forEach(id=>document.getElementById(id).value='__all');
+  fSnTiendaNum.value='';fSnBocaFiori.value='';fSnEAN.value='';
+  applySnacksFilters();
+}
+function renderSnacksKPIs(){
+  kSnOpp.textContent=fmtNum(filteredSnacks.length);
+  kSnTiendas.textContent=fmtNum(new Set(filteredSnacks.map(d=>d.local)).size);
+  kSnSkus.textContent=fmtNum(new Set(filteredSnacks.map(d=>d.ean)).size);
+  const bySup={};filteredSnacks.forEach(d=>{const s=d.supervisor||'Sin dato';bySup[s]=(bySup[s]||0)+1});
+  const supTop=Object.entries(bySup).sort((a,b)=>b[1]-a[1])[0];
+  kSnSupCrit.textContent=supTop?supTop[0]+' ('+fmtNum(supTop[1])+')':'-';
+  const byZona={};filteredSnacks.forEach(d=>{const z=d.area||'Sin dato';byZona[z]=(byZona[z]||0)+1});
+  const zonaTop=Object.entries(byZona).sort((a,b)=>b[1]-a[1])[0];
+  kSnZonaCrit.textContent=zonaTop?zonaTop[0]+' ('+fmtNum(zonaTop[1])+')':'-';
+}
+function renderOportSnacks(){
+  const qEl=document.getElementById('fSnSearch');
+  const q=norm(qEl?qEl.value:'');
+  if(!paramsLoaded){document.getElementById('snWarn').textContent='⚠️ Todavía no cargaste el archivo de Parámetros (hojas Dist y Stk Centros): sin esos datos no se puede calcular el CD asignado ni su stock, así que esta pestaña queda vacía.';}
+  else{document.getElementById('snWarn').textContent='';}
+  const rows=filteredSnacks.filter(d=>!q||norm(d.ean).includes(q)||norm(d.desc).includes(q)||norm(d.nombreTienda).includes(q)||norm(d.supervisor).includes(q))
+    .sort((a,b)=>(b.ventaMedia||0)-(a.ventaMedia||0)||(b.stockCDReal||0)-(a.stockCDReal||0));
+  rowsPillSnT.textContent=fmtNum(rows.length)+' filas';
+  table('tblOportSnacks',['Supervisor','Zona','Boca','N° tienda','Boca Fiori','EAN','Descripción','Marca','Familia','Gran Negocio','Stock CD','Stock Tienda','Quiebre','Estado SCRD','EE','Oportunidad de distribución','Motivo','UxB','Cantidad de bultos necesarios'],
+    rows.slice(0,1500).map(d=>[d.supervisor,d.area,d.nombreTienda,d.local,d.bocaFiori,d.ean,d.desc,d.marca,d.familia,d.gn,d.stockCDReal,d.stockBoca,d.quiebre,d.vigencia,d.ee,'Sí','Quiebre en tienda con stock disponible en el CD asignado',d.uxb,1]));
+}
+function downloadOportSnacks(){
+  const rows=[...filteredSnacks].sort((a,b)=>(b.ventaMedia||0)-(a.ventaMedia||0)||(b.stockCDReal||0)-(a.stockCDReal||0));
+  downloadTable('Oportunidades_Distribucion_Snacks_CD_Tienda.xls',
+    ['CD','Tienda','EAN','UxB','Cantidad de bultos necesarios','Supervisor','Zona','Boca Fiori','Descripción','Marca','Familia','Gran Negocio','Stock CD','Stock Tienda','Quiebre','Estado SCRD','EE','Oportunidad de distribución','Motivo'],
+    rows.map(d=>[d.cdAsignado,d.local+' · '+d.nombreTienda,d.ean,d.uxb,1,d.supervisor,d.area,d.bocaFiori,d.desc,d.marca,d.familia,d.gn,d.stockCDReal,d.stockBoca,d.quiebre,d.vigencia,d.ee,'Sí','Quiebre en tienda con stock disponible en el CD asignado']));
+}
+
+
+// ============================================================
+// SCRD — resumen por MRP / Familia, con filtros propios
+// Nota: Quiebres Pond, DF, Promedio de DF express y DF pond quedan pendientes
+// de fórmula (ver aviso en la propia pestaña y en Notas del modelo).
+// ============================================================
+function applyScrdFilters(){
+  const fam=fScrdFamilia.value, gn=fScrdGN.value, sup=fScrdSup.value,
+        ean=norm(fScrdEAN.value), bocaFiori=norm(fScrdBocaFiori.value), tiendaNum=norm(fScrdTiendaNum.value);
+  const rows=data.filter(d=>(fam==='__all'||d.familia===fam)&&(gn==='__all'||d.gn===gn)&&(sup==='__all'||d.supervisor===sup)
+    &&(!ean||norm(d.ean).includes(ean))&&(!bocaFiori||norm(d.bocaFiori).includes(bocaFiori))&&(!tiendaNum||norm(d.local).includes(tiendaNum)));
+  rowsPillScrd.textContent=fmtNum(rows.length)+' filas';
+  scrdMissingNote.innerHTML='⚠️ <b>Quiebres Pond, DF, Promedio de DF express y DF pond todavía no están calculados.</b> No encontré una fórmula confiable para esas 4 columnas en los archivos disponibles (la hoja "Alarma Vta" del archivo de Parámetros trae categorías de alarma — AL A / AL AA / AL B / AL C —, no un % de Fill Rate). Decime la fórmula exacta de cada una (por ejemplo: ¿DF = 1 − Quiebre ponderado por venta? ¿de dónde sale el ponderador?) y las agrego. El resto de las columnas (Quiebres, DOH, DOH cd, Stock umg, % stock CD, Venta Media, Venta Mensual, Pendiente umg, Suma de Pendiente doh) ya están calculadas.';
+  renderScrdTable(rows);
+}
+function resetScrdFilters(){
+  ['fScrdFamilia','fScrdGN','fScrdSup'].forEach(id=>document.getElementById(id).value='__all');
+  fScrdEAN.value='';fScrdBocaFiori.value='';fScrdTiendaNum.value='';
+  applyScrdFilters();
+}
+function scrdGroupStats(rows){
+  const rowsCount=rows.length;
+  const quebrados=rows.filter(d=>d.quebrado).length;
+  const stockUmg=rows.reduce((s,d)=>s+(d.stockBoca||0),0);
+  const ventaMedia=rows.reduce((s,d)=>s+(d.ventaMedia||0),0);
+  const pendUmg=rows.reduce((s,d)=>s+(d.pendienteQty||0),0);
+  const cdSeen=new Set(); let stockCdUnico=0;
+  rows.forEach(d=>{
+    if(d.cdAsignado&&d.stockCDReal!=null){
+      const k=d.ean+'|'+d.cdAsignado;
+      if(!cdSeen.has(k)){cdSeen.add(k);stockCdUnico+=d.stockCDReal;}
+    }
+  });
+  const doh=ventaMedia?stockUmg/ventaMedia:null;
+  const dohCd=ventaMedia?stockCdUnico/ventaMedia:null;
+  const pctStockCd=(stockUmg+stockCdUnico)?stockCdUnico/(stockUmg+stockCdUnico):null;
+  const pendDoh=ventaMedia?pendUmg/ventaMedia:null;
+  return {rowsCount,quiebrePct:rowsCount?quebrados/rowsCount:0,doh,dohCd,stockUmg,pctStockCd,ventaMedia,ventaMensual:ventaMedia*30,pendUmg,pendDoh};
+}
+function fmtOrSD(v,dec){return v==null?'s/d':Number(v).toFixed(dec!=null?dec:0);}
+function renderScrdTable(rows){
+  const byMRP={};
+  rows.forEach(d=>{
+    const mrp=d.mrp||'Sin dato', fam=d.familia||'Sin dato';
+    (byMRP[mrp]??={});
+    (byMRP[mrp][fam]??=[]).push(d);
+  });
+  const mrpOrder=Object.keys(byMRP).sort((a,b)=>a.localeCompare(b,'es'));
+  let html='<thead><tr><th>MRP</th><th>Familia</th><th class="num">Quiebres</th><th class="num">Quiebres Pond</th><th class="num">DOH</th><th class="num">DOH cd</th><th class="num">Stock umg</th><th class="num">% stock CD</th><th class="num">DF</th><th class="num">Prom. DF express</th><th class="num">DF pond</th><th class="num">Venta Media</th><th class="num">Venta Mensual</th><th class="num">Pendiente umg</th><th class="num">Suma Pendiente doh</th></tr></thead><tbody>';
+  for(const mrp of mrpOrder){
+    const familias=Object.keys(byMRP[mrp]).sort((a,b)=>a.localeCompare(b,'es'));
+    let allMrpRows=[];
+    for(const fam of familias){
+      const famRows=byMRP[mrp][fam];
+      allMrpRows=allMrpRows.concat(famRows);
+      const s=scrdGroupStats(famRows);
+      html+=`<tr><td>${esc(mrp)}</td><td>${esc(fam)}</td><td class="num">${fmtPct(s.quiebrePct)}</td><td class="num">s/d</td><td class="num">${fmtOrSD(s.doh,0)}</td><td class="num">${fmtOrSD(s.dohCd,0)}</td><td class="num">${fmtNum(s.stockUmg.toFixed(0))}</td><td class="num">${s.pctStockCd!=null?fmtPct(s.pctStockCd):'s/d'}</td><td class="num">s/d</td><td class="num">s/d</td><td class="num">s/d</td><td class="num">${s.ventaMedia.toFixed(0)}</td><td class="num">${s.ventaMensual.toFixed(0)}</td><td class="num">${s.pendUmg.toFixed(0)}</td><td class="num">${fmtOrSD(s.pendDoh,0)}</td></tr>`;
+    }
+    const st=scrdGroupStats(allMrpRows);
+    html+=`<tr style="font-weight:700;background:#eef3f7"><td colspan="2">Total ${esc(mrp)}</td><td class="num">${fmtPct(st.quiebrePct)}</td><td class="num">s/d</td><td class="num">${fmtOrSD(st.doh,0)}</td><td class="num">${fmtOrSD(st.dohCd,0)}</td><td class="num">${fmtNum(st.stockUmg.toFixed(0))}</td><td class="num">${st.pctStockCd!=null?fmtPct(st.pctStockCd):'s/d'}</td><td class="num">s/d</td><td class="num">s/d</td><td class="num">s/d</td><td class="num">${st.ventaMedia.toFixed(0)}</td><td class="num">${st.ventaMensual.toFixed(0)}</td><td class="num">${st.pendUmg.toFixed(0)}</td><td class="num">${fmtOrSD(st.pendDoh,0)}</td></tr>`;
+  }
+  const totalGeneral=scrdGroupStats(rows);
+  html+=`<tr style="font-weight:800;background:var(--navy);color:#fff"><td colspan="2">Total general</td><td class="num">${fmtPct(totalGeneral.quiebrePct)}</td><td class="num">s/d</td><td class="num">${fmtOrSD(totalGeneral.doh,0)}</td><td class="num">${fmtOrSD(totalGeneral.dohCd,0)}</td><td class="num">${fmtNum(totalGeneral.stockUmg.toFixed(0))}</td><td class="num">${totalGeneral.pctStockCd!=null?fmtPct(totalGeneral.pctStockCd):'s/d'}</td><td class="num">s/d</td><td class="num">s/d</td><td class="num">s/d</td><td class="num">${totalGeneral.ventaMedia.toFixed(0)}</td><td class="num">${totalGeneral.ventaMensual.toFixed(0)}</td><td class="num">${totalGeneral.pendUmg.toFixed(0)}</td><td class="num">${fmtOrSD(totalGeneral.pendDoh,0)}</td></tr>`;
+  html+='</tbody>';
+  document.getElementById('tblScrd').innerHTML=html;
+}
+
+/* ============================================================
+   AUTO-CARGA desde Google Sheets publicados + panel de admin
+   ============================================================ */
+const DEFAULT_SOURCES={
+  scrd:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTiMewjGXRQVZBeQii7RoHVsDv7lGnsfJQU_zt8kJwzdW7EGFZV_caX2PbZiCLtXw/pub?output=xlsx",
+  gp:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTcf45cGLEnK6GhRaEkd9y9VedIaAWO-anVD7xPi_NgKxEnOfbhYFMZX0y6wEYRSg/pub?output=xlsx",
+  param:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRvtf-kgQW6gaQSTtaQRuC5MDpy4Jt4vsuOSyQcFeFB5F4dMDrYYRf-ZlgFKicQ8x3tBhL6OjuHFXML/pub?output=xlsx"
 };
-const LS_KEY = "cf_dash_sources_v1";
-const LS_AUTH = "cf_dash_admin_ok";
-// SHA-256 hash of the admin password (set below via setAdminPassword in console,
-// or just replace ADMIN_HASH with the output of sha256("tuClave")).
-const ADMIN_HASH = "REEMPLAZAR_CON_HASH_SHA256";
+const LS_SRC="cf_dash_sources_v2", LS_AUTH="cf_dash_admin_ok";
+const ADMIN_HASH="REEMPLAZAR_CON_HASH_SHA256";
 
 function getSources(){
-  try{
-    const saved = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
-    return Object.assign({}, DEFAULT_SOURCES, saved);
-  }catch(e){ return Object.assign({}, DEFAULT_SOURCES); }
+  try{return Object.assign({},DEFAULT_SOURCES,JSON.parse(localStorage.getItem(LS_SRC)||"{}"));}
+  catch(e){return Object.assign({},DEFAULT_SOURCES);}
 }
 async function sha256(str){
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
 }
-
-/* ==========================================================================
-   Estado global
-   ========================================================================== */
-const DB = {
-  consolidado: [],      // por SKU nacional
-  maestro: new Map(),   // ean -> {desc, familia, granNegocio, mrp}
-  base: [],             // {tienda, ean, ventaMedia, stock, quiebre}
-  bocas: new Map(),     // nTienda -> {nombre, formato, cluster, supervisor, bocaFiori, entregaDirecta, status}
-  bocasByBocaFiori: new Map(), // bocaFiori code -> nTienda
-  pedidos: [],          // {destinatario, fecha, material, cajas}
-  entregas: []          // {destinatario, fecha, material, cajas}
-};
-let charts = {};
-
-function num(v){
-  if(v===undefined||v===null) return 0;
-  if(typeof v==="number") return v;
-  const s = String(v).replace(/\s/g,"").replace(/\./g,"").replace(",",".").replace("%","");
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
+function fetchBlob(url,label){
+  if(!url) return Promise.reject(new Error(label+': no hay URL configurada.'));
+  return fetch(url).then(r=>{
+    if(!r.ok) throw new Error(label+': HTTP '+r.status+' — revisá que el link siga publicado.');
+    return r.blob();
+  }).catch(e=>{ throw new Error(label+': '+(e.message||'fallo de red o CORS')); });
 }
-function pct(v){
-  if(v===undefined||v===null||v==="") return null;
-  const s = String(v).trim();
-  if(s.endsWith("%")) return parseFloat(s.replace("%","").replace(",",".")) ;
-  const n = parseFloat(s.replace(",","."));
-  if(isNaN(n)) return null;
-  return n<=1 ? n*100 : n;
+function setDiag(rows){
+  const panel=document.getElementById('diagPanel');
+  if(!rows.length){panel.style.display='none';panel.innerHTML='';return;}
+  panel.style.display='block';
+  panel.innerHTML=rows.map(r=>`<div>${r.ok?'✅':'🔴'} <b>${r.label}</b>: ${r.detail}</div>`).join('');
 }
 
-function fetchCsv(url, label){
-  return new Promise((resolve,reject)=>{
-    if(!url){ reject({label, message:"No hay URL configurada para esta fuente."}); return; }
-    Papa.parse(url, {
-      download:true, header:true, skipEmptyLines:true,
-      complete: r=>{
-        // Si Google devuelve una página de login/HTML en vez de CSV, Papa igual
-        // "parsea" algo pero sin las columnas esperadas: lo detectamos por
-        // ausencia total de columnas reconocibles o filas vacías.
-        if(!r.data || r.data.length===0){
-          reject({label, message:"La fuente respondió pero sin filas. Revisá que la hoja esté publicada como CSV (Archivo → Compartir → Publicar en la web) y que el gid sea correcto."});
-          return;
-        }
-        const cols = Object.keys(r.data[0]||{});
-        if(cols.length<=1 && cols[0] && /html|doctype/i.test(cols[0])){
-          reject({label, message:"La fuente devolvió HTML en vez de CSV — probablemente el link no está publicado como 'Anyone with the link' o el formato de salida no es CSV."});
-          return;
-        }
-        resolve(r.data);
-      },
-      error: e=>reject({label, message:(e && e.message) || "No se pudo descargar (posible bloqueo de red o CORS)."})
-    });
-  });
-}
-
-async function loadAll(){
-  setStatus("loading","Cargando datos…");
-  hideDiag();
-  const SRC = getSources();
-  const jobs = [
-    {key:"consolidado", label:SRC_LABELS.consolidado, p:fetchCsv(SRC.consolidado, SRC_LABELS.consolidado)},
-    {key:"maestroProducto", label:SRC_LABELS.maestroProducto, p:fetchCsv(SRC.maestroProducto, SRC_LABELS.maestroProducto)},
-    {key:"base", label:SRC_LABELS.base, p:fetchCsv(SRC.base, SRC_LABELS.base)},
-    {key:"bocas", label:SRC_LABELS.bocas, p:fetchCsv(SRC.bocas, SRC_LABELS.bocas)},
-    {key:"pedidos", label:SRC_LABELS.pedidos, p:fetchCsv(SRC.pedidos, SRC_LABELS.pedidos)},
-    {key:"viajesEntregas", label:SRC_LABELS.viajesEntregas, p:fetchCsv(SRC.viajesEntregas, SRC_LABELS.viajesEntregas)}
-  ];
-  const settled = await Promise.allSettled(jobs.map(j=>j.p));
-  const results = {};
-  const diagRows = [];
-  let hasFatalError = false;
-  settled.forEach((res, i)=>{
-    const job = jobs[i];
-    if(res.status==="fulfilled"){
-      results[job.key] = res.value;
-      diagRows.push({label: job.label, ok:true, detail: res.value.length.toLocaleString("es-AR")+" filas"});
-    } else {
-      hasFatalError = true;
-      results[job.key] = [];
-      const msg = (res.reason && res.reason.message) || "Error desconocido";
-      diagRows.push({label: job.label, ok:false, detail: msg});
-    }
-  });
-  renderDiag(diagRows);
-
-  if(hasFatalError){
-    setStatus("err", "Algunas fuentes no cargaron — ver diagnóstico");
-    document.getElementById("lastUpdated").textContent =
-      "Último intento " + new Date().toLocaleString("es-AR");
-    // seguimos igual con lo que sí cargó, para no dejar el dashboard vacío del todo
-  }
-
+async function loadAllAuto(){
+  const SRC=getSources();
+  document.getElementById('autoStatus').textContent='Cargando…';
+  setDiag([]);
+  storeByNum={};bfToTienda={};
+  const diag=[];
+  let scrdBlob=null, gpBlob=null, paramBlob=null;
   try{
-    const { consolidado, maestroProducto: maestroRows, base: baseRows, bocas: bocasRows,
-            pedidos: pedidosRows, viajesEntregas: entregasRows } = results;
-
-    // Maestro Producto: EAN -> ficha
-    DB.maestro = new Map();
-    maestroRows.forEach(r=>{
-      const ean = (r.EAN||"").toString().replace(/^\./,"").trim();
-      if(!ean) return;
-      DB.maestro.set(ean, {
-        desc: r.Descripcion || r["Descripcion"] || "",
-        familia: r.Familia || "",
-        granNegocio: r["Gran Negocio"] || "",
-        mrp: r.MRP || ""
-      });
-    });
-
-    // Consolidado: nivel SKU nacional
-    DB.consolidado = consolidado.map(r=>({
-      ean: (r.Ean||"").toString().trim(),
-      descripcion: r["Descripcion (mrp)"] || r["Descripción"] || "",
-      familia: r["Familia"] || r["Gran negocio"] || "",
-      granNegocio: r["Gran negocio"] || "",
-      quiebres: num(r["Quiebres"]),
-      doh: num(r["DOH"]),
-      dohCd: num(r["DOH cd"]),
-      stockUmg: num(r["Stock umg"]),
-      df: pct(r["DF"]),
-      dfHiper: pct(r["DF hiper"]),
-      dfMarket: pct(r["DF market"]),
-      dfExpress: pct(r["DF express"]),
-      ventaMedia: num(r["Venta Media "] || r["Venta Media"]),
-      pendienteUmg: num(r["Pendiente umg"])
-    })).filter(r=>r.ean);
-
-    // Bocas: tienda maestro + join Boca Fiori
-    DB.bocas = new Map();
-    DB.bocasByBocaFiori = new Map();
-    bocasRows.forEach(r=>{
-      const nTienda = (r["N° Tienda"]||"").toString().trim();
-      if(!nTienda) return;
-      const bocaFiori = (r["Boca Fiori"]||"").toString().trim();
-      const info = {
-        nombre: r["Nombre "] || r["Nombre"] || "",
-        formato: r["Formato"] || "",
-        cluster: r["Cluster"] || "",
-        regGeo: r["Reg Geografica"] || r["Zona Geografica"] || "",
-        supervisor: r["Supervisor"] || "Sin asignar",
-        bocaFiori: bocaFiori,
-        status: r["Status"] || "",
-        entregaDirecta: r["Entrega directa"] || ""
-      };
-      DB.bocas.set(nTienda, info);
-      if(bocaFiori) DB.bocasByBocaFiori.set(bocaFiori, nTienda);
-    });
-
-    // Base: Tienda x EAN (granularidad para cruces)
-    DB.base = baseRows.map(r=>({
-      tienda: (r[" Tienda"]||r["Tienda"]||"").toString().trim(),
-      ean: (r.Ean||"").toString().trim(),
-      ventaMedia: num(r["Vta media"]),
-      stock: num(r["Stock"]),
-      quiebre: num(r["Quiebres"])
-    })).filter(r=>r.tienda && r.ean);
-
-    // Pedidos
-    DB.pedidos = pedidosRows.map(r=>({
-      destinatario: (r["Destinatario mcía."]||"").toString().trim(),
-      fecha: r["Fecha del documento"] || "",
-      material: (r["Material"]||"").toString().trim(),
-      cajas: num(r["CAJ"])
-    })).filter(r=>r.destinatario);
-
-    // Viajes-entregas
-    DB.entregas = entregasRows.map(r=>({
-      destinatario: (r["Destinatario mcía."]||"").toString().trim(),
-      fecha: r["Fecha de entrega"] || "",
-      material: (r["Material"]||"").toString().trim(),
-      cajas: num(r["CAJ"])
-    })).filter(r=>r.destinatario);
-
-    if(!hasFatalError){
-      setStatus("ok", "Datos al día");
-      document.getElementById("lastUpdated").textContent =
-        "Actualizado " + new Date().toLocaleString("es-AR");
-    } else {
-      document.getElementById("lastUpdated").textContent =
-        "Actualizado parcialmente " + new Date().toLocaleString("es-AR") + " — ver diagnóstico";
-    }
-    populateFilters();
-    render();
-  }catch(err){
-    console.error(err);
-    setStatus("err", "Error procesando los datos");
-    renderDiag([{label:"Procesamiento", ok:false, detail:(err&&err.message)||String(err)}], true);
+    [scrdBlob,gpBlob]=await Promise.all([
+      fetchBlob(SRC.scrd,'SCRD Carrefour'),
+      fetchBlob(SRC.gp,'Gestión de Pedidos')
+    ]);
+    diag.push({label:'SCRD Carrefour',ok:true,detail:'descargado'});
+    diag.push({label:'Gestión de Pedidos',ok:true,detail:'descargado'});
+  }catch(e){
+    diag.push({label:'Descarga',ok:false,detail:e.message});
+    setDiag(diag);
+    document.getElementById('autoStatus').textContent='Error cargando datos — ver detalle arriba';
+    return;
   }
-}
+  try{ paramBlob=await fetchBlob(SRC.param,'Parámetros'); diag.push({label:'Parámetros',ok:true,detail:'descargado'}); }
+  catch(e){ diag.push({label:'Parámetros',ok:false,detail:e.message+' (opcional, se sigue sin Mínimos/Pendientes/Oportunidades por CD)'}); }
 
-function setStatus(kind,text){
-  const pill = document.getElementById("statusPill");
-  pill.className = "pill" + (kind==="ok" ? "" : kind==="err" ? " err" : " stale");
-  pill.style.cursor = kind==="err" ? "pointer" : "default";
-  document.getElementById("statusText").textContent = text;
-}
-
-/* ==========================================================================
-   Panel de diagnóstico — muestra, fuente por fuente, si cargó bien o no,
-   sin exponer las URLs (solo el nombre lógico de cada hoja).
-   ========================================================================== */
-function renderDiag(rows, append){
-  const panel = document.getElementById("diagPanel");
-  const body = document.getElementById("diagBody");
-  const html = rows.map(r=>`
-    <div class="diag-row ${r.ok?'':'diag-bad'}">
-      <span class="diag-dot"></span>
-      <span class="diag-label">${r.label}</span>
-      <span class="diag-detail">${r.detail}</span>
-    </div>`).join("");
-  body.innerHTML = append ? body.innerHTML + html : html;
-  panel.classList.add("show");
-}
-function hideDiag(){
-  document.getElementById("diagPanel").classList.remove("show");
-  document.getElementById("diagBody").innerHTML = "";
-}
-document.getElementById("statusPill").addEventListener("click", ()=>{
-  document.getElementById("diagPanel").classList.toggle("show");
-});
-document.getElementById("diagClose").addEventListener("click", ()=>{
-  document.getElementById("diagPanel").classList.remove("show");
-});
-
-/* ==========================================================================
-   Filtros
-   ========================================================================== */
-function populateFilters(){
-  const tSel = document.getElementById("fTienda");
-  const fmtSel = document.getElementById("fFormato");
-  const supSel = document.getElementById("fSupervisor");
-  const famSel = document.getElementById("fFamilia");
-
-  const tiendas = [...DB.bocas.entries()].sort((a,b)=> a[0].localeCompare(b[0], undefined, {numeric:true}));
-  tSel.innerHTML = '<option value="">Todas</option>' +
-    tiendas.map(([n,info])=>`<option value="${n}">${n} — ${info.nombre}</option>`).join("");
-
-  const formatos = [...new Set([...DB.bocas.values()].map(b=>b.formato).filter(Boolean))].sort();
-  fmtSel.innerHTML = '<option value="">Todos</option>' + formatos.map(f=>`<option value="${f}">${f}</option>`).join("");
-
-  const sups = [...new Set([...DB.bocas.values()].map(b=>b.supervisor).filter(Boolean))].sort();
-  supSel.innerHTML = '<option value="">Todos</option>' + sups.map(s=>`<option value="${s}">${s}</option>`).join("");
-
-  const familias = [...new Set(DB.consolidado.map(c=>c.familia).filter(Boolean))].sort();
-  famSel.innerHTML = '<option value="">Todas</option>' + familias.map(f=>`<option value="${f}">${f}</option>`).join("");
-
-  [tSel,fmtSel,supSel,famSel].forEach(el=>el.addEventListener("change", render));
-  document.getElementById("fSku").addEventListener("input", debounce(render, 250));
-  document.getElementById("clearFilters").addEventListener("click", ()=>{
-    tSel.value=""; fmtSel.value=""; supSel.value=""; famSel.value="";
-    document.getElementById("fSku").value="";
-    render();
-  });
-}
-function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
-
-function currentFilters(){
-  return {
-    tienda: document.getElementById("fTienda").value,
-    formato: document.getElementById("fFormato").value,
-    supervisor: document.getElementById("fSupervisor").value,
-    familia: document.getElementById("fFamilia").value,
-    sku: document.getElementById("fSku").value.trim().toLowerCase()
-  };
-}
-
-function tiendasThatMatch(f){
-  // Devuelve el set de N° Tienda que cumplen formato/supervisor/tienda puntual
-  const out = new Set();
-  for(const [n,info] of DB.bocas.entries()){
-    if(f.tienda && n!==f.tienda) continue;
-    if(f.formato && info.formato!==f.formato) continue;
-    if(f.supervisor && info.supervisor!==f.supervisor) continue;
-    out.add(n);
+  // Pre-pasada: Bocas → storeByNum/bfToTienda ANTES de armar `data` en loadSCRD,
+  // porque el SCRD real no trae "Maestro Tiendas" (Bocas lo reemplaza).
+  try{
+    const bocasRows=await readXlsxSheet(gpBlob,['Bocas']);
+    const n=applyBocasRows(bocasRows);
+    diag.push({label:'Bocas (pre-pasada)',ok:true,detail:n+' tiendas'});
+  }catch(e){
+    diag.push({label:'Bocas (pre-pasada)',ok:false,detail:e.message+' — si el SCRD tampoco trae Maestro Tiendas, el dashboard va a quedar sin datos de tienda.'});
   }
-  return out;
-}
-function skuMatches(ean, f, tiendaSetActive){
-  if(!f.familia && !f.sku) return true;
-  const m = DB.maestro.get(ean);
-  if(f.familia){
-    const fam = (DB.consolidado.find(c=>c.ean===ean)||{}).familia || (m&&m.familia) || "";
-    if(fam !== f.familia) return false;
-  }
-  if(f.sku){
-    const desc = ((m&&m.desc)||"").toLowerCase();
-    if(!ean.toLowerCase().includes(f.sku) && !desc.includes(f.sku)) return false;
-  }
-  return true;
-}
 
-/* ==========================================================================
-   Render
-   ========================================================================== */
-function render(){
-  const f = currentFilters();
-  const tiendaSet = tiendasThatMatch(f);
-  const anyStoreFilter = !!(f.tienda || f.formato || f.supervisor);
+  await loadSCRD(scrdBlob);
+  diag.push({label:'SCRD → procesado',ok:!!data.length,detail:fmtNum(data.length)+' filas Tienda×EAN'});
 
-  // --- filtered Base rows (Tienda x SKU) ---
-  const baseRows = DB.base.filter(r=>{
-    if(anyStoreFilter && !tiendaSet.has(r.tienda)) return false;
-    if((f.familia || f.sku) && !skuMatches(r.ean, f)) return false;
-    return true;
-  });
-
-  renderQuiebresKpiAndChart(baseRows);
-  renderFillRateAndDOH(f, tiendaSet, anyStoreFilter);
-  renderPedidosEntregas(f, tiendaSet, anyStoreFilter);
-  renderTopQuiebres(baseRows);
-}
-
-function renderQuiebresKpiAndChart(baseRows){
-  const total = baseRows.length;
-  const quiebres = baseRows.reduce((a,r)=>a+(r.quiebre>0?1:0),0);
-  const p = total ? (quiebres/total*100) : 0;
-  setKpi("kpiQuiebres", total ? p.toFixed(1)+"%" : "—",
-    `${quiebres.toLocaleString("es-AR")} de ${total.toLocaleString("es-AR")} combinaciones`,
-    p, p>15?"bad":p>7?"warn":"good");
-
-  // por cluster
-  const byCluster = new Map();
-  baseRows.forEach(r=>{
-    const info = DB.bocas.get(r.tienda);
-    const key = (info && info.cluster) ? info.cluster : "Sin cluster";
-    if(!byCluster.has(key)) byCluster.set(key,{q:0,t:0});
-    const o = byCluster.get(key); o.t++; if(r.quiebre>0) o.q++;
-  });
-  const labels = [...byCluster.keys()].sort();
-  const data = labels.map(k=>{const o=byCluster.get(k); return o.t? +(o.q/o.t*100).toFixed(1) : 0;});
-  drawBarChart("chartQuiebres", labels, data, "% quiebre");
-}
-
-function renderFillRateAndDOH(f, tiendaSet, anyStoreFilter){
-  let rows = DB.consolidado;
-  if(f.familia) rows = rows.filter(r=>r.familia===f.familia);
-  if(f.sku) rows = rows.filter(r=>{
-    const m = DB.maestro.get(r.ean);
-    const desc = ((m&&m.desc)||r.descripcion||"").toLowerCase();
-    return r.ean.toLowerCase().includes(f.sku) || desc.includes(f.sku);
-  });
-
-  // Fill rate: si hay filtro de formato, usar la columna DF del formato correspondiente
-  let dfVals;
-  if(f.formato){
-    const key = f.formato.toLowerCase().includes("hiper") ? "dfHiper"
-      : f.formato.toLowerCase().includes("market") ? "dfMarket"
-      : f.formato.toLowerCase().includes("express") ? "dfExpress" : "df";
-    dfVals = rows.map(r=>r[key]).filter(v=>v!==null && !isNaN(v));
+  if(Object.keys(storeByNum).length){
+    await loadGestionPedidos(gpBlob);
+    diag.push({label:'Gestión de Pedidos → procesado',ok:true,detail:fmtNum(Object.keys(afo.purchases).length)+' compras, '+fmtNum(Object.keys(afo.deliveries).length)+' entregas'});
   } else {
-    dfVals = rows.map(r=>r.df).filter(v=>v!==null && !isNaN(v));
+    diag.push({label:'Gestión de Pedidos → procesado',ok:false,detail:'no se procesó: no hay maestro de tiendas (ni Maestro Tiendas ni Bocas)'});
   }
-  const dfAvg = dfVals.length ? dfVals.reduce((a,b)=>a+b,0)/dfVals.length : null;
-  setKpi("kpiFillRate", dfAvg!==null ? dfAvg.toFixed(1)+"%" : "—",
-    rows.length + " SKUs en el universo filtrado", dfAvg||0,
-    dfAvg!==null ? (dfAvg<70?"bad":dfAvg<90?"warn":"good") : "");
 
-  const dohVals = rows.map(r=>r.doh).filter(v=>v>0);
-  const dohAvg = dohVals.length ? dohVals.reduce((a,b)=>a+b,0)/dohVals.length : null;
-  setKpi("kpiDOH", dohAvg!==null ? dohAvg.toFixed(1)+" días" : "—",
-    "Sobre " + dohVals.length + " SKUs con stock", dohAvg? Math.min(dohAvg/30*100,100):0,
-    dohAvg!==null ? (dohAvg<3?"bad":dohAvg>21?"warn":"good") : "");
-}
-
-function renderPedidosEntregas(f, tiendaSet, anyStoreFilter){
-  const filterByStore = (row)=>{
-    if(!anyStoreFilter) return true;
-    const nT = DB.bocasByBocaFiori.get(row.destinatario);
-    return nT && tiendaSet.has(nT);
-  };
-  const ped = DB.pedidos.filter(filterByStore);
-  const ent = DB.entregas.filter(filterByStore);
-  const pedTotal = ped.reduce((a,r)=>a+r.cajas,0);
-  const entTotal = ent.reduce((a,r)=>a+r.cajas,0);
-  const cumpl = pedTotal ? (entTotal/pedTotal*100) : null;
-  setKpi("kpiPedidos", cumpl!==null ? cumpl.toFixed(1)+"%" : "—",
-    `${entTotal.toLocaleString("es-AR")} de ${pedTotal.toLocaleString("es-AR")} cajas`,
-    cumpl||0, cumpl!==null ? (cumpl<80?"bad":cumpl<95?"warn":"good") : "");
-
-  // gráfico por fecha (semana simplificada = fecha tal cual, agrupada)
-  const byDate = new Map();
-  ped.forEach(r=>{
-    const k = r.fecha; if(!k) return;
-    if(!byDate.has(k)) byDate.set(k,{ped:0,ent:0});
-    byDate.get(k).ped += r.cajas;
-  });
-  ent.forEach(r=>{
-    const k = r.fecha; if(!k) return;
-    if(!byDate.has(k)) byDate.set(k,{ped:0,ent:0});
-    byDate.get(k).ent += r.cajas;
-  });
-  const dates = [...byDate.keys()].sort().slice(-12);
-  drawLineChart("chartPedidos", dates,
-    dates.map(d=>byDate.get(d).ped),
-    dates.map(d=>byDate.get(d).ent));
-
-  // tabla por supervisor
-  const bySup = new Map();
-  ped.forEach(r=>{
-    const nT = DB.bocasByBocaFiori.get(r.destinatario);
-    const sup = (nT && DB.bocas.get(nT) && DB.bocas.get(nT).supervisor) || "Sin asignar";
-    if(!bySup.has(sup)) bySup.set(sup,{ped:0,ent:0});
-    bySup.get(sup).ped += r.cajas;
-  });
-  ent.forEach(r=>{
-    const nT = DB.bocasByBocaFiori.get(r.destinatario);
-    const sup = (nT && DB.bocas.get(nT) && DB.bocas.get(nT).supervisor) || "Sin asignar";
-    if(!bySup.has(sup)) bySup.set(sup,{ped:0,ent:0});
-    bySup.get(sup).ent += r.cajas;
-  });
-  const tbody = document.getElementById("tblSupervisor");
-  const rowsHtml = [...bySup.entries()]
-    .sort((a,b)=>b[1].ped-a[1].ped)
-    .slice(0,20)
-    .map(([sup,o])=>{
-      const c = o.ped? (o.ent/o.ped*100) : 0;
-      const tag = c<80?"bad":c<95?"warn":"good";
-      return `<tr><td>${sup}</td><td class="num">${o.ped.toLocaleString("es-AR")}</td><td class="num">${o.ent.toLocaleString("es-AR")}</td><td class="num"><span class="tag ${tag}">${c.toFixed(1)}%</span></td></tr>`;
-    }).join("");
-  tbody.innerHTML = rowsHtml || '<tr><td colspan="4" class="empty-note">Sin datos para este filtro</td></tr>';
-}
-
-function renderTopQuiebres(baseRows){
-  const byEan = new Map();
-  baseRows.forEach(r=>{
-    if(!byEan.has(r.ean)) byEan.set(r.ean,{q:0,t:0});
-    const o = byEan.get(r.ean); o.t++; if(r.quiebre>0) o.q++;
-  });
-  const top = [...byEan.entries()]
-    .filter(([,o])=>o.q>0)
-    .sort((a,b)=>b[1].q-a[1].q)
-    .slice(0,15);
-  const tbody = document.getElementById("tblTopQuiebres");
-  tbody.innerHTML = top.length ? top.map(([ean,o])=>{
-    const m = DB.maestro.get(ean) || {};
-    const c = DB.consolidado.find(x=>x.ean===ean) || {};
-    const pctQ = o.t ? (o.q/o.t*100) : 0;
-    return `<tr>
-      <td>${ean}</td>
-      <td>${m.desc || c.descripcion || "—"}</td>
-      <td>${c.familia || m.familia || "—"}</td>
-      <td class="num">${o.q}</td>
-      <td class="num">${o.t}</td>
-      <td class="num"><span class="tag ${pctQ>30?'bad':pctQ>10?'warn':''}">${pctQ.toFixed(0)}%</span></td>
-    </tr>`;
-  }).join("") : '<tr><td colspan="6" class="empty-note">Sin quiebres en este filtro</td></tr>';
-}
-
-function setKpi(id, value, sub, barPct, tone){
-  const el = document.getElementById(id);
-  el.classList.remove("na","warn","bad","good");
-  if(tone) el.classList.add(tone);
-  el.querySelector(".value").textContent = value;
-  el.querySelector(".sub").textContent = sub;
-  const bar = el.querySelector(".bar i");
-  if(bar) bar.style.width = Math.max(0,Math.min(100,barPct||0)) + "%";
-}
-
-/* ==========================================================================
-   Charts
-   ========================================================================== */
-const CHART_COLORS = {accent:"#2fd3c2", warn:"#f2a341", grid:"#2a323f", text:"#8b95a3"};
-function baseChartOpts(){
-  return {
-    responsive:true, maintainAspectRatio:false,
-    plugins:{legend:{labels:{color:CHART_COLORS.text, font:{size:11}}}},
-    scales:{
-      x:{ticks:{color:CHART_COLORS.text,font:{size:10}}, grid:{color:CHART_COLORS.grid}},
-      y:{ticks:{color:CHART_COLORS.text,font:{size:10}}, grid:{color:CHART_COLORS.grid}}
-    }
-  };
-}
-function drawBarChart(canvasId, labels, data, label){
-  if(charts[canvasId]) charts[canvasId].destroy();
-  const ctx = document.getElementById(canvasId).getContext("2d");
-  charts[canvasId] = new Chart(ctx, {
-    type:"bar",
-    data:{labels, datasets:[{label, data, backgroundColor:CHART_COLORS.warn, borderRadius:5}]},
-    options: baseChartOpts()
-  });
-}
-function drawLineChart(canvasId, labels, pedData, entData){
-  if(charts[canvasId]) charts[canvasId].destroy();
-  const ctx = document.getElementById(canvasId).getContext("2d");
-  charts[canvasId] = new Chart(ctx, {
-    type:"line",
-    data:{labels, datasets:[
-      {label:"Pedido", data:pedData, borderColor:CHART_COLORS.text, backgroundColor:"transparent", tension:.3},
-      {label:"Entregado", data:entData, borderColor:CHART_COLORS.accent, backgroundColor:"transparent", tension:.3}
-    ]},
-    options: baseChartOpts()
-  });
-}
-
-/* ==========================================================================
-   Admin panel
-   ========================================================================== */
-const gear = document.getElementById("adminGear");
-const modal = document.getElementById("adminModal");
-const loginBody = document.getElementById("loginBody");
-const adminBody = document.getElementById("adminBody");
-
-gear.addEventListener("click", ()=>{
-  modal.classList.add("show");
-  if(sessionStorage.getItem(LS_AUTH)==="1"){
-    openAdminBody();
-  } else {
-    loginBody.style.display="block"; adminBody.classList.remove("show");
+  if(paramBlob){
+    await loadParametros(paramBlob);
+    diag.push({label:'Parámetros → procesado',ok:paramsLoaded,detail:paramsLoaded?'aplicado':'no se pudo aplicar'});
   }
+
+  setDiag(diag.filter(d=>!d.ok || d.label.includes('pre-pasada')===false ? true : true));
+  const anyErr=diag.some(d=>!d.ok);
+  document.getElementById('autoStatus').textContent = data.length
+    ? ('Datos al día — '+new Date().toLocaleString('es-AR')+(anyErr?' (con avisos, ver arriba)':''))
+    : 'No se pudo armar el dashboard — ver diagnóstico arriba';
+  // si todo salió bien y no hay avisos, no hace falta que el panel de diagnóstico quede abierto
+  if(!anyErr) setDiag([]);
+}
+document.getElementById('refreshAutoBtn').addEventListener('click', loadAllAuto);
+
+/* ---- Admin: gear, login, config de fuentes, carga manual ---- */
+const gear=document.getElementById('adminGear');
+const modal=document.getElementById('adminModal');
+gear.addEventListener('click', ()=>{
+  modal.style.display='flex';
+  if(sessionStorage.getItem(LS_AUTH)==='1') openAdminBody(); else showLogin();
 });
-document.getElementById("cancelLogin").addEventListener("click", ()=>modal.classList.remove("show"));
-document.getElementById("closeAdmin").addEventListener("click", ()=>modal.classList.remove("show"));
-modal.addEventListener("click", e=>{ if(e.target===modal) modal.classList.remove("show"); });
-
-document.getElementById("submitLogin").addEventListener("click", doLogin);
-document.getElementById("adminPass").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+function showLogin(){document.getElementById('loginBody').style.display='block';document.getElementById('adminBody').style.display='none';}
+document.getElementById('cancelLogin').addEventListener('click', ()=>modal.style.display='none');
+document.getElementById('closeAdmin').addEventListener('click', ()=>modal.style.display='none');
+modal.addEventListener('click', e=>{ if(e.target===modal) modal.style.display='none'; });
+document.getElementById('submitLogin').addEventListener('click', doLogin);
+document.getElementById('adminPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 async function doLogin(){
-  const val = document.getElementById("adminPass").value;
-  const hash = await sha256(val);
-  if(hash === ADMIN_HASH){
-    sessionStorage.setItem(LS_AUTH,"1");
-    document.getElementById("loginErr").classList.remove("show");
+  const val=document.getElementById('adminPass').value;
+  const hash=await sha256(val);
+  if(hash===ADMIN_HASH){
+    sessionStorage.setItem(LS_AUTH,'1');
+    document.getElementById('loginErr').style.display='none';
     openAdminBody();
+    document.getElementById('tabUpload').style.display='inline-block';
   } else {
-    document.getElementById("loginErr").classList.add("show");
+    document.getElementById('loginErr').style.display='block';
   }
 }
 function openAdminBody(){
-  loginBody.style.display="none";
-  adminBody.classList.add("show");
-  const cur = getSources();
-  document.getElementById("srcRows").innerHTML = Object.keys(DEFAULT_SOURCES).map(k=>`
-    <div class="src-row">
-      <label>${SRC_LABELS[k]}</label>
-      <input type="text" data-key="${k}" value="${(cur[k]||"").replace(/"/g,'&quot;')}">
-    </div>`).join("");
+  document.getElementById('loginBody').style.display='none';
+  document.getElementById('adminBody').style.display='block';
+  const cur=getSources();
+  document.getElementById('srcScrd').value=cur.scrd||'';
+  document.getElementById('srcGP').value=cur.gp||'';
+  document.getElementById('srcParam').value=cur.param||'';
+  document.getElementById('tabUpload').style.display='inline-block';
 }
-document.getElementById("saveSrc").addEventListener("click", ()=>{
-  const inputs = document.querySelectorAll("#srcRows input");
-  const obj = {};
-  inputs.forEach(i=>{ obj[i.dataset.key] = i.value.trim(); });
-  localStorage.setItem(LS_KEY, JSON.stringify(obj));
-  modal.classList.remove("show");
-  loadAll();
+document.getElementById('saveSrc').addEventListener('click', ()=>{
+  localStorage.setItem(LS_SRC, JSON.stringify({
+    scrd: document.getElementById('srcScrd').value.trim(),
+    gp: document.getElementById('srcGP').value.trim(),
+    param: document.getElementById('srcParam').value.trim()
+  }));
+  modal.style.display='none';
+  loadAllAuto();
 });
-document.getElementById("refreshBtn").addEventListener("click", loadAll);
+document.getElementById('showUploadTab').addEventListener('click', ()=>{
+  modal.style.display='none';
+  document.getElementById('manualUploadBox').style.display='block';
+  document.querySelector('[data-tab="upload"]').classList.remove('locked');
+  document.querySelector('[data-tab="upload"]').click();
+});
 
-/* ==========================================================================
-   Init
-   ========================================================================== */
-loadAll();
+loadAllAuto();
 </script>
-</body>
-</html>
+</body></html>
