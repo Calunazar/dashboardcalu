@@ -386,7 +386,14 @@ async function loadGestionPedidos(f){
     const pedH=pedRows[pedHIdx];
     const iPFecha=findCol(pedH,'Fecha del documento'),iPRef=findCol(pedH,'Referencia cliente'),iPPed=findCol(pedH,'Pedido de cliente'),iPDest=findCol(pedH,'Destinatario'),iPMat=findCol(pedH,'Material');
 
-    const viaRows=await readXlsxSheet(f,['Viajes-entregas','Viajes-Entregas']);
+    let viaRows;
+    try{
+      viaRows=await readXlsxSheet(f,['Viajes-entregas','Viajes-Entregas','ViajesEntregas','Viajes Entregas']);
+    }catch(e){
+      console.warn('No encontré "Viajes-entregas" en el workbook completo, la traigo por CSV directo.', e);
+      const viaText=await fetchText(VIAJES_ENTREGAS_CSV_FALLBACK,'Viajes-entregas (CSV)');
+      viaRows=Papa.parse(viaText,{skipEmptyLines:false}).data;
+    }
     const viaHIdx=findHeader(viaRows,['fecha de entrega','material','destinatario']);
     const viaH=viaRows[viaHIdx];
     const iVDest=findCol(viaH,'Destinatario'),iVFecha=findCol(viaH,'Fecha de entrega'),iVMat=findCol(viaH,'Material');
@@ -832,6 +839,7 @@ const DEFAULT_SOURCES={
 };
 const LS_SRC="cf_dash_sources_v2", LS_AUTH="cf_dash_admin_ok";
 const ADMIN_HASH="REEMPLAZAR_CON_HASH_SHA256";
+const VIAJES_ENTREGAS_CSV_FALLBACK="https://docs.google.com/spreadsheets/d/e/2PACX-1vTcf45cGLEnK6GhRaEkd9y9VedIaAWO-anVD7xPi_NgKxEnOfbhYFMZX0y6wEYRSg/pub?gid=562157111&single=true&output=csv";
 
 function getSources(){
   try{return Object.assign({},DEFAULT_SOURCES,JSON.parse(localStorage.getItem(LS_SRC)||"{}"));}
